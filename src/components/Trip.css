@@ -1,53 +1,161 @@
-.container {
-  max-width: 500px;
-  margin: auto;
-  padding: 20px;
-  font-family: sans-serif;
+/* RESET + ROOT FIX */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  
 }
 
+
+/* Центрування */
+#root {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  width: 100%;
+  min-height: 100vh;
+
+  background: linear-gradient(135deg, #667eea, #764ba2);
+}
+
+/* Контейнер */
+.container {
+  max-width: 500px;
+  width: 100%;
+  padding: 25px;
+
+  background: white;
+  border-radius: 16px;
+
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+
+  animation: fadeIn 0.5s ease;
+}
+
+/* Заголовок */
+h1 {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+/* Групи */
 .form-group {
   margin-bottom: 20px;
 }
 
+/* Лейбли */
 label {
   display: block;
   margin-bottom: 8px;
   font-weight: bold;
+  color: #555;
 }
 
+/* Inputs */
 select, input {
   width: 100%;
-  padding: 8px;
-  margin-bottom: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+
+  border-radius: 10px;
+  border: 1px solid #ddd;
+
+  font-size: 14px;
+  transition: 0.2s;
 }
 
+select:focus, input:focus {
+  border-color: #667eea;
+  outline: none;
+  box-shadow: 0 0 5px rgba(102,126,234,0.5);
+}
+
+/* Кнопки */
 button {
-  padding: 8px 16px;
-  margin-top: 8px;
+  width: 100%;
+  padding: 12px;
+
+  border: none;
+  border-radius: 10px;
+
   cursor: pointer;
+  font-weight: bold;
+
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+
+  transition: 0.3s;
 }
 
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+/* ERROR */
 .error {
-  color: red;
+  color: #ff4d4f;
   margin: 5px 0;
+  font-size: 14px;
 }
 
+/* HOBBIES */
 .hobbies-container {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
+  justify-content: center;
 }
 
+/* Хобі кнопки */
 .hobby {
-  border: 1px solid #ccc;
+  border: 1px solid #ddd;
   background-color: #f5f5f5;
   border-radius: 20px;
-  padding: 6px 12px;
+  padding: 8px 16px;
+
   cursor: pointer;
+  transition: all 0.2s ease;
+
+  font-size: 14px;
 }
 
+/* Hover */
+.hobby:hover {
+  background-color: #e0e0ff;
+  transform: scale(1.05);
+}
+
+/* 🔥 КЛІК АНІМАЦІЯ */
+.hobby:active {
+  transform: scale(0.95);
+}
+
+/* ВИБРАНЕ */
+/* HOBBY BUTTON RESET (щоб не наслідувало button стиль) */
+.hobby {
+  background: #f5f5f5 !important;
+  color: #333 !important;
+  border: 2px solid #ddd !important;
+}
+
+/* SELECTED STATE */
 .hobby.selected {
-  background-color: #007bff;
-  color: white;
-  border-color: #007bff;
+  background: #667eea !important;
+  color: white !important;
+  border-color: #667eea !important;
+}
+
+/* Анімація появи */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

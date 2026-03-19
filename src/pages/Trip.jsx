@@ -8,7 +8,9 @@ function Trip() {
   const navigate = useNavigate();
 
   const [step, setStep] = useState(1);
-  const [duration, setDuration] = useState("");
+  // замість duration
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [country, setCountry] = useState("");
   const [city, setCity] = useState("");
   const [budget, setBudget] = useState("");
@@ -17,8 +19,8 @@ function Trip() {
   const [error, setError] = useState("");
 
   const handleNext = () => {
-    if (step === 1 && !duration) {
-      setError("Please select trip duration!");
+    if (step === 1 && (!dateFrom || !dateTo)) {
+      setError("Please select travel dates!");
       return;
     }
     if (step === 3 && !budget) {
@@ -37,8 +39,8 @@ function Trip() {
   const handleSubmit = (e) => {
     e.preventDefault();
     navigate("/result", {
-      state: { duration, country, city, budget, currency, hobbies },
-    });
+      state: { dateFrom, dateTo, country, city, budget, currency, hobbies },
+});
   };
 
   const toggleHobby = (hobby) => {
@@ -54,21 +56,28 @@ function Trip() {
       <h1>Plan your trip</h1>
       <form onSubmit={handleSubmit}>
 
-        {/* Step 1: Duration */}
+       {/* Step 1: Dates */}
         {step === 1 && (
           <div className="form-group">
-            <label>Trip duration</label>
-            <select value={duration} onChange={(e) => setDuration(e.target.value)}>
-              <option value="">Select duration</option>
-              {[...Array(10)].map((_, i) => (
-                <option key={i} value={i + 1}>
-                  {i + 1} {i === 0 ? "day" : "days"}
-                </option>
-              ))}
-              <option value="other">Other duration</option>
-            </select>
+            <label>Travel dates</label>
+
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+            />
+
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+            />
+
             {error && <p className="error">{error}</p>}
-            <button type="button" onClick={handleNext}>Next</button>
+
+            <button type="button" onClick={handleNext}>
+              Next
+            </button>
           </div>
         )}
 
