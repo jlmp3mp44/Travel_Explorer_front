@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Navbar from "../components/NavBar.jsx";
 import "../components/Home.css";
 
 function Home() {
@@ -26,10 +27,15 @@ function Home() {
   }, []);
 
   return (
+  <div>
+
+    <Navbar />
+
+
+    {/* MAIN CONTENT */}
     <div className="home-container">
       <h1 className="home-title">Explore Trips ✈️</h1>
 
-      {/* кнопка створення нового тріпу */}
       <button
         className="create-btn"
         onClick={() => navigate("/trip")}
@@ -37,8 +43,6 @@ function Home() {
         Create Your Trip
       </button>
 
-
-      {/* список тріпів */}
       <div className="trips-list">
         {loading ? (
           <p>Loading trips...</p>
@@ -49,7 +53,7 @@ function Home() {
             <div
               key={index}
               className="trip-card"
-              onClick={() => navigate(`/trip/${index + 1}`)} // поки що id немає, можна підставити tripId
+              onClick={() => navigate(`/trip/${index + 1}`)}
             >
               <h3>{trip.title}</h3>
               <p>
@@ -60,7 +64,11 @@ function Home() {
         )}
       </div>
     </div>
-  );
+
+  </div>
+);
+  
 }
+
 
 export default Home;

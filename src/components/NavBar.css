@@ -1,0 +1,48 @@
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0; /* 🔥 prevents cutting */
+  height: 70px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding-right: 20px;
+  box-sizing: border-box;
+  z-index: 1000;
+}
+
+/* buttons container */
+.nav-right {
+  display: flex;
+  gap: 12px;
+}
+
+/* buttons */
+.sign-in-btn,
+.sign-up-btn {
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+/* styles */
+.sign-in-btn {
+  background: white;
+  color: #333;
+}
+
+.sign-in-btn:hover {
+  background: #eee;
+}
+
+.sign-up-btn {
+  background: #007bff;
+  color: white;
+}
+
+.sign-up-btn:hover {
+  background: #0056b3;
+}

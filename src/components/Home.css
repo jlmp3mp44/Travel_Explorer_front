@@ -50,3 +50,6 @@ body {
 .trip-card:hover {
   transform: translateY(-5px);
 }
+.home-container {
+  margin-top: 100px;
+}
