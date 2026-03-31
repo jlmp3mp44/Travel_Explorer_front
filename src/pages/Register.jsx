@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "../components/Register.css"; // можеш додати свої стилі
+import "../components/Register.css"; // CSS для форми
 
 function Register() {
   const navigate = useNavigate();
@@ -33,10 +33,11 @@ function Register() {
       const data = await res.json();
 
       if (res.ok) {
-        setSuccess("Registration successful! You can now log in.");
-        // через 2 секунди перенаправимо на логін
+        setSuccess("Registration successful! Redirecting to login...");
+        // через 2 секунди редирект на логін
         setTimeout(() => navigate("/login"), 2000);
       } else {
+        // Показуємо повідомлення з бекенду, або дефолтне
         setError(data.message || "Registration failed");
       }
     } catch (err) {

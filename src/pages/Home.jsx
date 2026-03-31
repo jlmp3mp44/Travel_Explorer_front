@@ -55,9 +55,9 @@ function Home() {
               className="trip-card"
               onClick={() => navigate(`/trip/${index + 1}`)}
             >
-              <h3>{trip.title}</h3>
+              <h3>{trip.trip.title}</h3>
               <p>
-                {trip.startDate} – {trip.endDate}
+                {trip.trip.startDate} – {trip.trip.endDate}
               </p>
             </div>
           ))
