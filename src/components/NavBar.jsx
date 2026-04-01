@@ -7,8 +7,11 @@ function Navbar() {
   const { username, loading, logout } = useAuth();
 
   const handleLogout = () => {
-    logout();
-    navigate("/");
+    const confirmLogout = window.confirm("Are you sure you want to sign out?");
+    if (confirmLogout) {
+      logout();
+      navigate("/");
+    }
   };
 
   return (
