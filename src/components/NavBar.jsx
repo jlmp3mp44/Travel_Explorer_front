@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import "../components/Navbar.css";
+import "../components/NavBar.css";
 
 function Navbar() {
   const navigate = useNavigate();
@@ -16,9 +16,20 @@ function Navbar() {
 
   return (
     <div className="navbar">
+      {/* 🔹 LEFT SIDE */}
+      <div className="nav-left">
+        <button className="home-btn" onClick={() => navigate("/")}>
+          🏠 Home
+        </button>
+      </div>
+
+      {/* 🔹 RIGHT SIDE */}
       <div className="nav-right">
         {loading ? null : username ? (
           <>
+            <button type="button" className="profile-btn" onClick={() => navigate("/profile")}>
+              Profile
+            </button>
             <span className="username">{username}</span>
             <button className="logout-btn" onClick={handleLogout}>
               Sign Out

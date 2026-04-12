@@ -5,7 +5,7 @@ import "../components/Login.css";
 
 function Login() {
   const navigate = useNavigate();
-  const { login } = useAuth(); // використовуємо login з контексту
+  const { login } = useAuth();
 
   const [usernameInput, setUsernameInput] = useState("");
   const [password, setPassword] = useState("");
@@ -21,20 +21,20 @@ function Login() {
       const response = await fetch("http://localhost:8080/api/auth/signin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
-          username: usernameInput,
+          username: usernameInput.trim(),
           password,
         }),
       });
 
+      const data = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        const data = await response.json();
         throw new Error(data.message || "Login failed");
       }
 
-      const data = await response.json();
-      // зберігаємо токен і username у контексті
-      login(data.token, data.username);
+      login(data);
       navigate("/");
     } catch (err) {
       setError(err.message || "Something went wrong");
@@ -48,9 +48,11 @@ function Login() {
       <h1>Login</h1>
       <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label>Username</label>
+          <label htmlFor="login-username">Username</label>
           <input
+            id="login-username"
             type="text"
+            autoComplete="username"
             value={usernameInput}
             onChange={(e) => setUsernameInput(e.target.value)}
             required
@@ -58,9 +60,11 @@ function Login() {
         </div>
 
         <div className="form-group">
-          <label>Password</label>
+          <label htmlFor="login-password">Password</label>
           <input
+            id="login-password"
             type="password"
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required

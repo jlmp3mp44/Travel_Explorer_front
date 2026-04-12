@@ -1,67 +1,106 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+}
 .navbar {
   position: fixed;
   top: 0;
   left: 0;
-  right: 0; /* 🔥 prevents cutting */
+  right: 0; /* Використовуємо замість width: 100vw */
   height: 70px;
-  display: flex;
-  justify-content: flex-end;
+
+  display: flex !important; /* Force flex */
+  justify-content: space-between !important;
   align-items: center;
-  padding-right: 20px;
-  box-sizing: border-box;
+
+  padding: 0 30px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   z-index: 1000;
+  box-sizing: border-box; /* Важливо! */
 }
 
-/* buttons container */
+/* LEFT */
+.nav-left {
+  display: flex;
+  align-items: center;
+}
+
+/* RIGHT */
 .nav-right {
   display: flex;
+  align-items: center;
   gap: 12px;
 }
 
-/* buttons */
-.sign-in-btn,
-.sign-up-btn {
+.home-btn {
+  background: transparent;
+  border: 2px solid white;
+  color: white;
   padding: 8px 16px;
   border-radius: 20px;
-  border: none;
   cursor: pointer;
-  font-weight: 500;
-}
-
-/* styles */
-.sign-in-btn {
-  background: white;
-  color: #333;
-}
-
-.sign-in-btn:hover {
-  background: #eee;
-}
-
-.sign-up-btn {
-  background: #007bff;
-  color: white;
-}
-
-.sign-up-btn:hover {
-  background: #0056b3;
-}
-.username {
   font-weight: 600;
-  color: #333;
-  align-self: center;
+  transition: 0.3s;
+}
+
+.home-btn:hover {
+  background: white;
+  color: #6a5acd;
+}
+
+.profile-btn {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.profile-btn:hover {
+  background: rgba(255, 255, 255, 0.35);
+  transform: translateY(-1px);
+}
+
+.username {
+  color: white;
+  font-weight: bold;
+}
+
+/* Auth: same primary style for Sign In and Sign Up */
+.sign-in-btn,
+.sign-up-btn {
+  background: linear-gradient(135deg, #4facfe, #6a5acd);
+  color: white;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 2px 10px rgba(106, 90, 205, 0.35);
+}
+
+.sign-in-btn:hover,
+.sign-up-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(79, 172, 254, 0.45);
 }
 
 .logout-btn {
-  padding: 8px 16px;
-  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #5b4db8;
   border: none;
+  padding: 8px 18px;
+  border-radius: 20px;
   cursor: pointer;
-  background: #dc3545;
-  color: white;
-  font-weight: 500;
+  font-weight: 600;
+  transition: background 0.2s ease;
 }
 
 .logout-btn:hover {
-  background: #b02a37;
+  background: white;
 }

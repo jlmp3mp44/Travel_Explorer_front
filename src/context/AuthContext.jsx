@@ -1,60 +1,65 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
+
+const API_BASE = "http://localhost:8080";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [username, setUsername] = useState(null);
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState(localStorage.getItem("jwtToken") || null);
 
-  // Автоматично перевіряємо токен при завантаженні
+  const refreshUser = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/user`, {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        setUser(null);
+        return null;
+      }
+      const data = await res.json();
+      setUser(data);
+      return data;
+    } catch {
+      setUser(null);
+      return null;
+    }
+  }, []);
+
   useEffect(() => {
-    const fetchUser = async () => {
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-      try {
-        const res = await fetch("http://localhost:8080/api/username", {
-          headers: {
-            "Authorization": `Bearer ${token}`,
-          },
-        });
-
-        if (!res.ok) {
-          setUsername(null);
-          setToken(null);
-          localStorage.removeItem("jwtToken");
-        } else {
-          const data = await res.text();
-          setUsername(data);
-        }
-      } catch (e) {
-        setUsername(null);
-        setToken(null);
-        localStorage.removeItem("jwtToken");
-      } finally {
-        setLoading(false);
-      }
+    let cancelled = false;
+    (async () => {
+      await refreshUser();
+      if (!cancelled) setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
     };
+  }, [refreshUser]);
 
-    fetchUser();
-  }, [token]);
-
-  const login = (jwt, username) => {
-    setToken(jwt);
-    localStorage.setItem("jwtToken", jwt);
-    setUsername(username);
+  /** Call after successful sign-in; body matches UserInfoResponse from the backend. */
+  const login = (userInfo) => {
+    setUser(userInfo);
   };
 
   const logout = () => {
-    setUsername(null);
-    setToken(null);
-    localStorage.removeItem("jwtToken");
+    setUser(null);
+    localStorage.removeItem("userEmail");
   };
 
   return (
-    <AuthContext.Provider value={{ username, setUsername, login, logout, token, loading }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        username: user?.username ?? null,
+        email: user?.email ?? null,
+        roles: user?.roles ?? [],
+        login,
+        logout,
+        refreshUser,
+        loading,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -1,11 +1,19 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../components/Trip.css";
 
 const allHobbies = ["Culture", "Nature", "Food", "Nightlife", "Adventure", "Shopping"];
 
+function toLocalISODate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 function Trip() {
   const navigate = useNavigate();
+  const todayStr = useMemo(() => toLocalISODate(new Date()), []);
 
   const [step, setStep] = useState(1);
   const [startDate, setstartDate] = useState("");
@@ -18,22 +26,47 @@ function Trip() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const endDateMin = startDate && startDate >= todayStr ? startDate : todayStr;
+
+  const handleStartChange = (value) => {
+    setstartDate(value);
+    if (endDate && value && endDate < value) {
+      setendDate(value);
+    }
+  };
+
   const handleNext = () => {
-    if (step === 1 && (!startDate || !endDate)) {
-      setError("Please select travel dates!");
-      return;
+    if (step === 1) {
+      if (!startDate || !endDate) {
+        setError("Please select travel dates!");
+        return;
+      }
+      if (startDate < todayStr || endDate < todayStr) {
+        setError("Dates cannot be in the past.");
+        return;
+      }
+      if (endDate < startDate) {
+        setError("End date must be on or after the start date.");
+        return;
+      }
+    }
+    if (step === 2) {
+      if (!country) {
+        setError("Please select a country.");
+        return;
+      }
     }
     if (step === 3 && !budget) {
       setError("Please enter your budget!");
       return;
     }
-    if (step === 4 && hobbies.length === 0) {
-      setError("Please select at least one hobby!");
-      return;
-    }
-
     setError("");
     setStep(step + 1);
+  };
+
+  const goBack = () => {
+    setError("");
+    setStep((s) => Math.max(1, s - 1));
   };
 
   const toggleHobby = (hobby) => {
@@ -45,62 +78,97 @@ function Trip() {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setError("");
-  setLoading(true);
+    e.preventDefault();
+    setError("");
+    if (hobbies.length === 0) {
+      setError("Please select at least one hobby!");
+      return;
+    }
+    setLoading(true);
 
-  const tripData = {
-    startDate,
-    endDate,
-    country,
-    city,
-    budget: budget ? parseInt(budget, 10) : null, // <-- сюди
-    currency,
-    hobbies
+    const tripData = {
+      startDate,
+      endDate,
+      country,
+      city,
+      budget: budget ? parseInt(budget, 10) : null,
+      currency,
+      hobbies,
+    };
+
+    try {
+      const res = await fetch("http://localhost:8080/api/public/trips", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(tripData),
+      });
+
+      if (!res.ok) throw new Error("Failed to create trip on backend");
+      const data = await res.json();
+
+      navigate(`/trip/${data.id}`);
+    } catch (err) {
+      console.error(err);
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
-
-  try {
-    const res = await fetch("http://localhost:8080/api/public/trips", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(tripData),
-    });
-
-    console.log("Response status:", res.status);
-
-    if (!res.ok) throw new Error("Failed to create trip on backend");
-    const data = await res.json();
-    navigate("/result", { state: data });
-  } catch (err) {
-    console.error(err);
-    setError("Something went wrong. Please try again.");
-  } finally {
-    setLoading(false);
-  }
-};
 
   return (
     <div className="container">
       <h1>Plan your trip</h1>
-      <form onSubmit={handleSubmit}>
+      <div className="trip-step-dots" aria-hidden="true">
+        {[1, 2, 3, 4].map((n) => (
+          <span key={n} className={n === step ? "dot active" : n < step ? "dot done" : "dot"} />
+        ))}
+      </div>
 
-        {/* Step 1: Dates */}
+      <form onSubmit={handleSubmit}>
         {step === 1 && (
           <div className="form-group">
             <label>Travel dates</label>
-            <input type="date" value={startDate} onChange={(e) => setstartDate(e.target.value)} />
-            <input type="date" value={endDate} onChange={(e) => setendDate(e.target.value)} />
+            <div className="date-row">
+              <div className="date-field">
+                <span className="date-label">Start</span>
+                <input
+                  type="date"
+                  min={todayStr}
+                  value={startDate}
+                  onChange={(e) => handleStartChange(e.target.value)}
+                />
+              </div>
+              <div className="date-field">
+                <span className="date-label">End</span>
+                <input
+                  type="date"
+                  min={endDateMin}
+                  value={endDate}
+                  onChange={(e) => setendDate(e.target.value)}
+                />
+              </div>
+            </div>
             {error && <p className="error">{error}</p>}
-            <button type="button" onClick={handleNext}>Next</button>
+            <button type="button" onClick={handleNext}>
+              Next
+            </button>
           </div>
         )}
 
-        {/* Step 2: Country + optional City */}
         {step === 2 && (
           <div className="form-group">
-            <label>Country (optional)</label>
-            <select value={country} onChange={(e) => { setCountry(e.target.value); setCity(""); }}>
-              <option value="">Any country</option>
+            <label>
+              Country <span className="required-star">*</span>
+            </label>
+            <select
+              value={country}
+              onChange={(e) => {
+                setCountry(e.target.value);
+                setCity("");
+              }}
+              required
+            >
+              <option value="">Select a country</option>
               <option value="france">France</option>
               <option value="italy">Italy</option>
               <option value="spain">Spain</option>
@@ -108,32 +176,60 @@ function Trip() {
 
             {country && (
               <select value={city} onChange={(e) => setCity(e.target.value)}>
-                <option value="">Select city (optional)</option>
-                {country === "france" && <> <option>Paris</option> <option>Lyon</option> </>}
-                {country === "italy" && <> <option>Rome</option> <option>Milan</option> </>}
-                {country === "spain" && <> <option>Barcelona</option> <option>Madrid</option> </>}
+                <option value="">City (optional)</option>
+                {country === "france" && (
+                  <>
+                    <option>Paris</option>
+                    <option>Lyon</option>
+                  </>
+                )}
+                {country === "italy" && (
+                  <>
+                    <option>Rome</option>
+                    <option>Milan</option>
+                  </>
+                )}
+                {country === "spain" && (
+                  <>
+                    <option>Barcelona</option>
+                    <option>Madrid</option>
+                  </>
+                )}
               </select>
             )}
 
-            <button type="button" onClick={handleNext}>Next</button>
+            {error && <p className="error">{error}</p>}
+            <div className="form-actions">
+              <button type="button" className="btn-secondary" onClick={goBack}>
+                Back
+              </button>
+              <button type="button" onClick={handleNext}>
+                Next
+              </button>
+            </div>
           </div>
         )}
 
-        {/* Step 3: Budget */}
         {step === 3 && (
           <div className="form-group">
             <label>Budget</label>
-            <input type="number" value={budget} onChange={(e) => setBudget(e.target.value)} />
+            <input type="number" min="0" value={budget} onChange={(e) => setBudget(e.target.value)} />
             <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
               <option value="EUR">EUR</option>
               <option value="USD">USD</option>
             </select>
             {error && <p className="error">{error}</p>}
-            <button type="button" onClick={handleNext}>Next</button>
+            <div className="form-actions">
+              <button type="button" className="btn-secondary" onClick={goBack}>
+                Back
+              </button>
+              <button type="button" onClick={handleNext}>
+                Next
+              </button>
+            </div>
           </div>
         )}
 
-        {/* Step 4: Hobbies */}
         {step === 4 && (
           <div className="form-group">
             <label>Hobbies</label>
@@ -150,12 +246,16 @@ function Trip() {
               ))}
             </div>
             {error && <p className="error">{error}</p>}
-            <button type="submit" disabled={loading}>
-              {loading ? "Creating..." : "Create Trip"}
-            </button>
+            <div className="form-actions">
+              <button type="button" className="btn-secondary" onClick={goBack}>
+                Back
+              </button>
+              <button type="submit" disabled={loading}>
+                {loading ? "Creating..." : "Create Trip"}
+              </button>
+            </div>
           </div>
         )}
-
       </form>
     </div>
   );

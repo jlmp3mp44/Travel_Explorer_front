@@ -8,6 +8,7 @@ function Register() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
@@ -16,6 +17,12 @@ function Register() {
     e.preventDefault();
     setError("");
     setSuccess("");
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match. Please try again.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -78,8 +85,24 @@ function Register() {
           <label>Password:</label>
           <input
             type="password"
+            name="password"
+            autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={8}
+            maxLength={126}
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Confirm password:</label>
+          <input
+            type="password"
+            name="confirmPassword"
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
             required
             minLength={8}
             maxLength={126}

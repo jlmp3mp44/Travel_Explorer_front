@@ -8,6 +8,7 @@ import Result from "./pages/Result";
 import TripDetails from "./pages/TripDetails";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
+import Profile from "./pages/Profile";
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           <Route path="/trip/:id" element={<TripDetails />} />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/profile" element={<Profile />} />
         </Routes>
       </Router>
     </AuthProvider>

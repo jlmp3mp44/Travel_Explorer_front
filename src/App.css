@@ -182,3 +182,20 @@
     border-right-color: var(--border);
   }
 }
+
+/* 🔥 ВАЖЛИВО: прибираємо обмеження ширини */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+/* ❌ якщо у тебе було max-width — прибираємо */
+#root {
+  max-width: none;
+}
+
+/* щоб не було горизонтального скролу */
+body {
+  overflow-x: hidden;
+}
