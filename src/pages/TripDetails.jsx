@@ -93,32 +93,34 @@ function TripDetails() {
             </div>
           </header>
 
-          <section className="trip-days-section">
-            <h2>Itinerary</h2>
-            {trip.days?.map((day, index) => (
-              <article key={index} className="trip-day-card">
-                <div className="trip-day-header">
-                  <span className="trip-day-badge">Day {index + 1}</span>
-                  <span className="trip-day-date">{day.date}</span>
-                </div>
-
-                {day.activities?.map((activity, i) => (
-                  <div key={i} className="trip-activity">
-                    <div className="trip-activity-time">
-                      {activity.startTime} – {activity.endTime}
-                    </div>
-
-                    {activity.places?.length > 0 && (
-                      <ul className="trip-places">
-                        {activity.places.map((place, j) => (
-                          <li key={j}>{place.title}</li>
-                        ))}
-                      </ul>
-                    )}
+          <section className="trip-days-section" aria-labelledby="trip-itinerary-heading">
+            <h2 id="trip-itinerary-heading">Itinerary</h2>
+            <div className="trip-days-scroll" role="region" aria-label="Daily itinerary">
+              {trip.days?.map((day, index) => (
+                <article key={index} className="trip-day-card">
+                  <div className="trip-day-header">
+                    <span className="trip-day-badge">Day {index + 1}</span>
+                    <span className="trip-day-date">{day.date}</span>
                   </div>
-                ))}
-              </article>
-            ))}
+
+                  {day.activities?.map((activity, i) => (
+                    <div key={i} className="trip-activity">
+                      <div className="trip-activity-time">
+                        {activity.startTime} – {activity.endTime}
+                      </div>
+
+                      {activity.places?.length > 0 && (
+                        <ul className="trip-places">
+                          {activity.places.map((place, j) => (
+                            <li key={j}>{place.title}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ))}
+                </article>
+              ))}
+            </div>
           </section>
         </div>
 

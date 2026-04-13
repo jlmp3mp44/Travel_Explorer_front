@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiUrl } from "../config/api";
 import {
@@ -6,6 +6,14 @@ import {
   friendlyTripCreateError,
   parseResponseJson,
 } from "../utils/friendlyErrors";
+import {
+  cityId,
+  cityLabel,
+  countryId,
+  countryLabel,
+  normalizeListResponse,
+} from "../utils/geoApi";
+import SearchableSelect from "../components/SearchableSelect";
 import "../components/Trip.css";
 
 const allHobbies = ["Culture", "Nature", "Food", "Nightlife", "Adventure", "Shopping"];
@@ -24,15 +32,104 @@ function Trip() {
   const [step, setStep] = useState(1);
   const [startDate, setstartDate] = useState("");
   const [endDate, setendDate] = useState("");
-  const [country, setCountry] = useState("");
-  const [city, setCity] = useState("");
+  const [selectedCountryId, setSelectedCountryId] = useState("");
+  const [selectedCityId, setSelectedCityId] = useState("");
   const [budget, setBudget] = useState("");
   const [currency, setCurrency] = useState("EUR");
   const [hobbies, setHobbies] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const [countries, setCountries] = useState([]);
+  const [countriesLoading, setCountriesLoading] = useState(true);
+  const [countriesError, setCountriesError] = useState("");
+
+  const [cities, setCities] = useState([]);
+  const [citiesLoading, setCitiesLoading] = useState(false);
+  const [citiesError, setCitiesError] = useState("");
+
   const endDateMin = startDate && startDate >= todayStr ? startDate : todayStr;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCountries = async () => {
+      setCountriesLoading(true);
+      setCountriesError("");
+      try {
+        const res = await fetch(apiUrl("/api/public/countries"));
+        const data = await parseResponseJson(res);
+        if (!res.ok) {
+          throw new Error("Could not load countries.");
+        }
+        const list = normalizeListResponse(data);
+        if (!cancelled) setCountries(list);
+      } catch (err) {
+        if (!cancelled) {
+          setCountries([]);
+          setCountriesError(friendlyNetworkError(err));
+        }
+      } finally {
+        if (!cancelled) setCountriesLoading(false);
+      }
+    };
+
+    loadCountries();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedCountryId) {
+      setCities([]);
+      setCitiesError("");
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadCities = async () => {
+      setCitiesLoading(true);
+      setCitiesError("");
+      setCities([]);
+      setSelectedCityId("");
+
+      try {
+        const res = await fetch(
+          apiUrl(`/api/public/countries/${encodeURIComponent(selectedCountryId)}/cities`)
+        );
+        const data = await parseResponseJson(res);
+        if (!res.ok) {
+          throw new Error("Could not load cities.");
+        }
+        const list = normalizeListResponse(data);
+        if (!cancelled) setCities(list);
+      } catch (err) {
+        if (!cancelled) {
+          setCities([]);
+          setCitiesError(friendlyNetworkError(err));
+        }
+      } finally {
+        if (!cancelled) setCitiesLoading(false);
+      }
+    };
+
+    loadCities();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCountryId]);
+
+  const selectedCountry = useMemo(
+    () => countries.find((c) => countryId(c) === selectedCountryId),
+    [countries, selectedCountryId]
+  );
+
+  const selectedCity = useMemo(
+    () => cities.find((c) => cityId(c) === selectedCityId),
+    [cities, selectedCityId]
+  );
 
   const handleStartChange = (value) => {
     setstartDate(value);
@@ -57,7 +154,7 @@ function Trip() {
       }
     }
     if (step === 2) {
-      if (!country) {
+      if (!selectedCountryId) {
         setError("Please choose a country to continue.");
         return;
       }
@@ -92,11 +189,14 @@ function Trip() {
     }
     setLoading(true);
 
+    const countryName = selectedCountry ? countryLabel(selectedCountry) : "";
+    const cityName = selectedCity ? cityLabel(selectedCity) : "";
+
     const tripData = {
       startDate,
       endDate,
-      country,
-      city,
+      country: countryName,
+      city: cityName || "",
       budget: budget ? parseInt(budget, 10) : null,
       currency,
       hobbies,
@@ -124,6 +224,40 @@ function Trip() {
       setLoading(false);
     }
   };
+
+  const sortedCountries = useMemo(() => {
+    return [...countries].sort((a, b) =>
+      countryLabel(a).localeCompare(countryLabel(b), undefined, { sensitivity: "base" })
+    );
+  }, [countries]);
+
+  const sortedCities = useMemo(() => {
+    return [...cities].sort((a, b) =>
+      cityLabel(a).localeCompare(cityLabel(b), undefined, { sensitivity: "base" })
+    );
+  }, [cities]);
+
+  const countryOptions = useMemo(
+    () =>
+      sortedCountries
+        .map((c) => {
+          const id = countryId(c);
+          return id ? { id, label: countryLabel(c) } : null;
+        })
+        .filter(Boolean),
+    [sortedCountries]
+  );
+
+  const cityOptions = useMemo(
+    () =>
+      sortedCities
+        .map((c) => {
+          const id = cityId(c);
+          return id ? { id, label: cityLabel(c) } : null;
+        })
+        .filter(Boolean),
+    [sortedCities]
+  );
 
   return (
     <div className="container">
@@ -166,46 +300,47 @@ function Trip() {
         )}
 
         {step === 2 && (
-          <div className="form-group">
-            <label>
-              Country <span className="required-star">*</span>
-            </label>
-            <select
-              value={country}
-              onChange={(e) => {
-                setCountry(e.target.value);
-                setCity("");
-              }}
-              required
-            >
-              <option value="">Select a country</option>
-              <option value="france">France</option>
-              <option value="italy">Italy</option>
-              <option value="spain">Spain</option>
-            </select>
+          <div className="form-group trip-location-step">
+            {countriesError ? (
+              <p className="error" role="alert">
+                {countriesError}
+              </p>
+            ) : (
+              <SearchableSelect
+                label="Country"
+                required
+                placeholder="Tap to choose a country"
+                inputPlaceholder="Type to search countries…"
+                options={countryOptions}
+                value={selectedCountryId}
+                onChange={(id) => {
+                  setSelectedCountryId(id);
+                  setSelectedCityId("");
+                }}
+                loading={countriesLoading}
+                disabled={!!countriesError}
+              />
+            )}
 
-            {country && (
-              <select value={city} onChange={(e) => setCity(e.target.value)}>
-                <option value="">City (optional)</option>
-                {country === "france" && (
-                  <>
-                    <option>Paris</option>
-                    <option>Lyon</option>
-                  </>
+            {selectedCountryId && !countriesError && (
+              <>
+                {citiesError ? (
+                  <p className="error" role="alert">
+                    {citiesError}
+                  </p>
+                ) : (
+                  <SearchableSelect
+                    label="City"
+                    placeholder="Any city"
+                    inputPlaceholder="Type to search cities…"
+                    emptyOption={{ id: "", label: "Any city (no preference)" }}
+                    options={cityOptions}
+                    value={selectedCityId}
+                    onChange={setSelectedCityId}
+                    loading={citiesLoading}
+                  />
                 )}
-                {country === "italy" && (
-                  <>
-                    <option>Rome</option>
-                    <option>Milan</option>
-                  </>
-                )}
-                {country === "spain" && (
-                  <>
-                    <option>Barcelona</option>
-                    <option>Madrid</option>
-                  </>
-                )}
-              </select>
+              </>
             )}
 
             {error && <p className="error">{error}</p>}
@@ -213,7 +348,13 @@ function Trip() {
               <button type="button" className="btn-secondary" onClick={goBack}>
                 Back
               </button>
-              <button type="button" onClick={handleNext}>
+              <button
+                type="button"
+                onClick={handleNext}
+                disabled={
+                  countriesLoading || !!countriesError || !countryOptions.length
+                }
+              >
                 Next
               </button>
             </div>

@@ -62,6 +62,24 @@ html, body, #root {
   font-weight: 700;
 }
 
+.trip-city-label {
+  display: block;
+  margin-top: 14px;
+  margin-bottom: 8px;
+  font-weight: bold;
+  color: #555;
+}
+
+.trip-select-hint {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: #666;
+}
+
+.trip-location-step .form-actions {
+  margin-top: 8px;
+}
+
 .date-row {
   display: grid;
   grid-template-columns: 1fr 1fr;

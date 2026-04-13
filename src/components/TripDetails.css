@@ -37,6 +37,8 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+  min-width: 0;
+  min-height: 0;
 }
 
 .trip-hero {
@@ -108,13 +110,56 @@
 .trip-days-section {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 0;
+  min-height: 0;
 }
 
 .trip-days-section h2 {
   font-size: 1.15rem;
   margin: 8px 0 0;
   color: var(--text-h, #1a1a2e);
+  flex-shrink: 0;
+}
+
+/* Scroll only the day cards — keeps hero + heading in view, fits the viewport */
+.trip-days-scroll {
+  margin-top: 12px;
+  max-height: min(58vh, calc(100dvh - 280px));
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 10px 12px 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(102, 126, 234, 0.12);
+  background: rgba(250, 251, 255, 0.6);
+}
+
+.trip-days-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.trip-days-scroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 8px;
+}
+
+.trip-days-scroll::-webkit-scrollbar-thumb {
+  background: rgba(102, 126, 234, 0.35);
+  border-radius: 8px;
+}
+
+.trip-days-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(102, 126, 234, 0.5);
+}
+
+@media (max-width: 960px) {
+  .trip-days-scroll {
+    max-height: min(52vh, calc(100dvh - 220px));
+  }
 }
 
 .trip-day-card {
