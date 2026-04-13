@@ -1,5 +1,11 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { apiUrl } from "../config/api";
+import {
+  friendlyNetworkError,
+  friendlyPublicLoadError,
+  parseResponseJson,
+} from "../utils/friendlyErrors";
 import "../components/TripDetails.css";
 
 function TripDetails() {
@@ -8,16 +14,26 @@ function TripDetails() {
 
   const [trip, setTrip] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     const fetchTrip = async () => {
+      setLoadError("");
       try {
-        const res = await fetch(`http://localhost:8080/api/public/trips/${id}`);
-        if (!res.ok) throw new Error("Failed to fetch trip");
-        const data = await res.json();
+        const res = await fetch(apiUrl(`/api/public/trips/${id}`));
+        const data = await parseResponseJson(res);
+
+        if (!res.ok) {
+          setTrip(null);
+          setLoadError(friendlyPublicLoadError(res.status, "trip"));
+          return;
+        }
+
         setTrip(data);
       } catch (err) {
         console.error("Error fetching trip:", err);
+        setTrip(null);
+        setLoadError(friendlyNetworkError(err));
       } finally {
         setLoading(false);
       }
@@ -34,10 +50,21 @@ function TripDetails() {
     );
   }
 
+  if (loadError) {
+    return (
+      <div className="trip-details-empty">
+        <p role="alert">{loadError}</p>
+        <button type="button" className="trip-back-btn" onClick={() => navigate("/")}>
+          ← Back to home
+        </button>
+      </div>
+    );
+  }
+
   if (!trip) {
     return (
       <div className="trip-details-empty">
-        <p>No trip found.</p>
+        <p>This trip isn’t available.</p>
         <button type="button" className="trip-back-btn" onClick={() => navigate("/")}>
           ← Back to home
         </button>

@@ -1,28 +1,48 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiUrl } from "../config/api";
+import { friendlyNetworkError, parseResponseJson } from "../utils/friendlyErrors";
 import "../components/Home.css";
 
 function Home() {
   const navigate = useNavigate();
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
-    // Беремо перші 3 тріпи з бекенду
-    fetch("http://localhost:8080/api/public/trips?pageNumber=0&pageSize=3")
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch trips");
-        return res.json();
+    let cancelled = false;
+
+    fetch(apiUrl("/api/public/trips?pageNumber=0&pageSize=3"))
+      .then(async (res) => {
+        const data = await parseResponseJson(res);
+        if (!res.ok) {
+          throw new Error(
+            res.status >= 500
+              ? "The server is busy right now. Please try again in a moment."
+              : "We couldn’t load trips. Please refresh the page."
+          );
+        }
+        return data;
       })
       .then((data) => {
-        console.log("Trips from backend:", data.content); // Дебаг
+        if (cancelled) return;
         setTrips(data.content || []);
-        setLoading(false);
+        setLoadError("");
       })
       .catch((err) => {
+        if (cancelled) return;
         console.error("Error fetching trips:", err);
-        setLoading(false);
+        setLoadError(friendlyNetworkError(err));
+        setTrips([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
@@ -40,9 +60,13 @@ function Home() {
 
         <div className="trips-list">
           {loading ? (
-            <p>Loading trips...</p>
+            <p>Loading trips…</p>
+          ) : loadError ? (
+            <p className="home-inline-error" role="alert">
+              {loadError}
+            </p>
           ) : trips.length === 0 ? (
-            <p>No trips available</p>
+            <p>No trips to show yet.</p>
           ) : (
             trips.map((trip) => (
               <div

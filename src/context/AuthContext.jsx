@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
-
-const API_BASE = "http://localhost:8080";
+import { apiUrl } from "../config/api";
 
 const AuthContext = createContext();
 
@@ -10,7 +9,7 @@ export const AuthProvider = ({ children }) => {
 
   const refreshUser = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/user`, {
+      const res = await fetch(apiUrl("/api/user"), {
         credentials: "include",
       });
       if (!res.ok) {

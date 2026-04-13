@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "../components/Register.css"; // CSS для форми
+import { apiUrl } from "../config/api";
+import {
+  friendlyNetworkError,
+  friendlyRegisterError,
+  parseResponseJson,
+} from "../utils/friendlyErrors";
+import "../components/Register.css";
 
 function Register() {
   const navigate = useNavigate();
@@ -19,37 +25,36 @@ function Register() {
     setSuccess("");
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match. Please try again.");
+      setError("Those passwords don’t match. Please type the same password twice.");
       return;
     }
 
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:8080/api/auth/signup", {
+      const res = await fetch(apiUrl("/api/auth/signup"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           username,
           email,
           password,
-          roles: [] // ігноруємо ролі
+          roles: [],
         }),
       });
 
-      const data = await res.json();
+      const data = await parseResponseJson(res);
 
       if (res.ok) {
-        setSuccess("Registration successful! Redirecting to login...");
-        // через 2 секунди редирект на логін
+        setSuccess("You’re registered! Taking you to sign in…");
         setTimeout(() => navigate("/login"), 2000);
       } else {
-        // Показуємо повідомлення з бекенду, або дефолтне
-        setError(data.message || "Registration failed");
+        setError(friendlyRegisterError(res.status, data));
       }
     } catch (err) {
       console.error(err);
-      setError("Something went wrong. Try again.");
+      setError(friendlyNetworkError(err));
     } finally {
       setLoading(false);
     }

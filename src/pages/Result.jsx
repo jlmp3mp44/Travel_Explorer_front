@@ -44,8 +44,10 @@ function Result() {
   if (!dateFrom || !dateTo || !budget || !hobbies || hobbies.length === 0) {
     return (
       <p>
-        No data. Go back to{" "}
-        <button onClick={() => navigate("/")}>Home</button>
+        We don’t have your trip details.{" "}
+        <button type="button" onClick={() => navigate("/")}>
+          Back to home
+        </button>
       </p>
     );
   }

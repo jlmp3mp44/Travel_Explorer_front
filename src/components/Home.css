@@ -23,6 +23,14 @@ body {
   color: transparent;
 }
 
+.home-inline-error {
+  color: #b91c1c;
+  max-width: 420px;
+  margin: 0 auto;
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+
 .home-sub {
   color: #6b6b80;
   font-size: 1rem;

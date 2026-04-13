@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { apiUrl } from "../config/api";
+import {
+  friendlyLoginError,
+  friendlyNetworkError,
+  parseResponseJson,
+} from "../utils/friendlyErrors";
 import "../components/Login.css";
 
 function Login() {
@@ -18,7 +24,7 @@ function Login() {
     setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:8080/api/auth/signin", {
+      const response = await fetch(apiUrl("/api/auth/signin"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -28,16 +34,17 @@ function Login() {
         }),
       });
 
-      const data = await response.json().catch(() => ({}));
+      const data = await parseResponseJson(response);
 
       if (!response.ok) {
-        throw new Error(data.message || "Login failed");
+        setError(friendlyLoginError(response.status, data));
+        return;
       }
 
       login(data);
       navigate("/");
     } catch (err) {
-      setError(err.message || "Something went wrong");
+      setError(friendlyNetworkError(err));
     } finally {
       setLoading(false);
     }

@@ -1,5 +1,11 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiUrl } from "../config/api";
+import {
+  friendlyNetworkError,
+  friendlyTripCreateError,
+  parseResponseJson,
+} from "../utils/friendlyErrors";
 import "../components/Trip.css";
 
 const allHobbies = ["Culture", "Nature", "Food", "Nightlife", "Adventure", "Shopping"];
@@ -38,26 +44,26 @@ function Trip() {
   const handleNext = () => {
     if (step === 1) {
       if (!startDate || !endDate) {
-        setError("Please select travel dates!");
+        setError("Please choose both a start date and an end date.");
         return;
       }
       if (startDate < todayStr || endDate < todayStr) {
-        setError("Dates cannot be in the past.");
+        setError("Pick dates from today onward.");
         return;
       }
       if (endDate < startDate) {
-        setError("End date must be on or after the start date.");
+        setError("The end date can’t be before the start date.");
         return;
       }
     }
     if (step === 2) {
       if (!country) {
-        setError("Please select a country.");
+        setError("Please choose a country to continue.");
         return;
       }
     }
     if (step === 3 && !budget) {
-      setError("Please enter your budget!");
+      setError("Please enter your budget.");
       return;
     }
     setError("");
@@ -81,7 +87,7 @@ function Trip() {
     e.preventDefault();
     setError("");
     if (hobbies.length === 0) {
-      setError("Please select at least one hobby!");
+      setError("Choose at least one interest for your trip.");
       return;
     }
     setLoading(true);
@@ -97,19 +103,23 @@ function Trip() {
     };
 
     try {
-      const res = await fetch("http://localhost:8080/api/public/trips", {
+      const res = await fetch(apiUrl("/api/public/trips"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(tripData),
       });
 
-      if (!res.ok) throw new Error("Failed to create trip on backend");
-      const data = await res.json();
+      const data = await parseResponseJson(res);
+
+      if (!res.ok) {
+        setError(friendlyTripCreateError(res.status, data));
+        return;
+      }
 
       navigate(`/trip/${data.id}`);
     } catch (err) {
       console.error(err);
-      setError("Something went wrong. Please try again.");
+      setError(friendlyNetworkError(err));
     } finally {
       setLoading(false);
     }
