@@ -1,83 +1,484 @@
-/* RESET + ROOT FIX */
-html, body, #root {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  
-}
+/* Trip wizard — full-page atmosphere + glass panels */
 
-
-/* Центрування */
-#root {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-
+.trip-page {
+  position: relative;
+  isolation: isolate;
+  min-height: calc(100dvh - 70px);
   width: 100%;
-  min-height: 100vh;
-
-  background: linear-gradient(135deg, #667eea, #764ba2);
-}
-
-/* Контейнер */
-.container {
   max-width: 520px;
-  width: 100%;
-  padding: 28px 28px 32px;
-
-  background: white;
-  border-radius: 16px;
-
-  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-
-  animation: fadeIn 0.5s ease;
+  margin: 0 auto;
+  padding: 84px 20px 32px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  font-family: system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  font-feature-settings: "kern" 1;
 }
 
-.trip-step-dots {
-  display: flex;
+.trip-page--auth-wait {
+  align-items: center;
   justify-content: center;
-  gap: 8px;
+}
+
+.trip-auth-wait-msg {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.trip-page__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  min-height: 0;
+}
+
+.trip-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 120% 80% at 100% 0%, rgba(255, 200, 140, 0.18), transparent 50%),
+    radial-gradient(ellipse 90% 60% at 0% 100%, rgba(120, 200, 255, 0.12), transparent 45%),
+    linear-gradient(165deg, #4f5fc9 0%, #6b4ba3 42%, #4a3f8f 100%);
+  pointer-events: none;
+}
+
+.trip-page__header {
+  flex-shrink: 0;
+  text-align: center;
   margin-bottom: 22px;
 }
 
-.trip-step-dots .dot {
-  width: 8px;
-  height: 8px;
+.trip-page__kicker {
+  margin: 0 0 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.trip-page__title {
+  margin: 0 0 8px;
+  font-size: clamp(1.5rem, 4.2vw, 1.85rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: rgba(255, 255, 255, 0.98);
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.18);
+}
+
+.trip-page__subtitle {
+  margin: 0 0 10px;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.72);
+  font-weight: 500;
+}
+
+/* Stepper */
+.trip-stepper {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 0 2px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.trip-stepper::-webkit-scrollbar {
+  display: none;
+}
+
+.trip-stepper__item {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  opacity: 0.65;
+  transition: opacity 0.3s ease;
+}
+
+.trip-stepper__item.is-active {
+  opacity: 1;
+}
+
+.trip-stepper__item.is-done {
+  opacity: 0.92;
+}
+
+.trip-stepper__dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  background: #e0e0e8;
-  transition: background 0.25s ease, transform 0.25s ease;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  transition: transform 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
 }
 
-.trip-step-dots .dot.done {
-  background: #a89be8;
+.trip-stepper__item.is-active .trip-stepper__dot {
+  background: rgba(255, 255, 255, 0.95);
+  color: #5a4ab5;
+  border-color: transparent;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  transform: scale(1.06);
 }
 
-.trip-step-dots .dot.active {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  transform: scale(1.25);
+.trip-stepper__item.is-done .trip-stepper__dot {
+  background: rgba(120, 255, 200, 0.25);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 0.65rem;
+}
+
+.trip-stepper__label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
+}
+
+.trip-stepper__item.is-active .trip-stepper__label {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.trip-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.trip-form--interests {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Glass surface for steps 1–3 */
+.trip-step-surface {
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.14) 0%,
+    rgba(255, 255, 255, 0.06) 100%
+  );
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 22px;
+  padding: 24px 22px 26px;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  animation: tripStepIn 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.trip-step-heading {
+  margin-bottom: 18px;
+  text-align: left;
+}
+
+.trip-step-title {
+  margin: 0 0 6px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: rgba(255, 255, 255, 0.98);
+}
+
+.trip-step-desc {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.trip-budget-row {
+  display: grid;
+  grid-template-columns: 1fr minmax(0, 120px);
+  gap: 14px;
+  align-items: end;
+  margin-bottom: 4px;
+}
+
+@media (max-width: 400px) {
+  .trip-budget-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.trip-budget-amount label,
+.trip-budget-currency label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.trip-budget-row input,
+.trip-budget-row select {
+  margin-bottom: 0;
 }
 
 .required-star {
-  color: #c0392b;
+  color: #ffb4b4;
   font-weight: 700;
-}
-
-.trip-city-label {
-  display: block;
-  margin-top: 14px;
-  margin-bottom: 8px;
-  font-weight: bold;
-  color: #555;
 }
 
 .trip-select-hint {
   margin: 0 0 10px;
   font-size: 14px;
-  color: #666;
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .trip-location-step .form-actions {
   margin-top: 8px;
+}
+
+/* --- Step 4: interests --- */
+.trip-interests-step {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  text-align: left;
+}
+
+.trip-interests-top {
+  flex-shrink: 0;
+  margin-bottom: 12px;
+}
+
+.trip-interests-heading {
+  margin: 0 0 8px;
+  font-size: 1.22rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: rgba(255, 255, 255, 0.98);
+}
+
+.trip-interests-lead {
+  margin: 0;
+  font-size: 0.87rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.72);
+  font-weight: 400;
+}
+
+.trip-interests-pill {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 12px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: rgba(90, 70, 180, 0.95);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+
+.trip-interests-error {
+  margin-top: 8px;
+}
+
+.trip-categories-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  padding: 4px 4px 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.trip-categories-scroll::-webkit-scrollbar {
+  width: 7px;
+}
+
+.trip-categories-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 8px;
+}
+
+.interest-group {
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease;
+}
+
+.interest-group--open {
+  border-color: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.15);
+}
+
+.interest-group__header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 17px;
+  background: rgba(255, 255, 255, 0.07) !important;
+  color: rgba(255, 255, 255, 0.96) !important;
+  border: none !important;
+  font-size: 0.94rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  text-align: left;
+  box-shadow: none !important;
+  transform: none !important;
+  margin: 0;
+  min-height: 50px;
+  transition: background 0.22s ease;
+}
+
+.interest-group__header:hover {
+  background: rgba(255, 255, 255, 0.13) !important;
+}
+
+.interest-group__title {
+  flex: 1;
+  min-width: 0;
+}
+
+.interest-group__chevron {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 12px;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.interest-group--open .interest-group__chevron {
+  transform: rotate(0deg);
+}
+
+/* Expand/collapse motion */
+.interest-group__body-wrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.interest-group__body-wrap.is-open {
+  grid-template-rows: 1fr;
+}
+
+.interest-group__body-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.interest-group__body-inner > .trip-select-hint,
+.interest-group__body-inner > .interest-group__error,
+.interest-group__body-inner > .interest-group__empty {
+  padding: 12px 16px 16px;
+}
+
+.interest-group__error {
+  margin: 0;
+}
+
+.interest-group__empty {
+  margin: 0;
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.interest-group__chips-scroll {
+  max-height: min(36vh, 260px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 12px 14px 14px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.interest-group__chips-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.interest-group__chips-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+}
+
+.interest-group__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.interest-chip {
+  padding: 8px 14px !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  cursor: pointer;
+  width: auto !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  transform: none !important;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease !important;
+}
+
+.interest-chip:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+  transform: none !important;
+}
+
+.interest-chip--selected {
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: #4a3f9e !important;
+  border-color: transparent !important;
+}
+
+.trip-interests-actions {
+  flex-shrink: 0;
+  margin-top: 14px;
+  padding-top: 8px;
+}
+
+/* Form fields — steps 1–3 */
+.trip-step-surface label,
+.form-group label {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.trip-step-surface select,
+.trip-step-surface input {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #222;
 }
 
 .date-row {
@@ -100,11 +501,11 @@ html, body, #root {
 }
 
 .date-label {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  color: #777;
+  color: rgba(255, 255, 255, 0.75);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
 }
 
 .form-actions {
@@ -119,141 +520,154 @@ html, body, #root {
 }
 
 button.btn-secondary {
-  background: #f3f4f8 !important;
-  color: #444 !important;
-  border: 1px solid #ddd !important;
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
   box-shadow: none !important;
 }
 
 button.btn-secondary:hover {
-  background: #e8e9f0 !important;
+  background: rgba(255, 255, 255, 0.28) !important;
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12) !important;
 }
 
-/* Заголовок */
-h1 {
-  text-align: center;
-  margin-bottom: 20px;
-  color: #333;
+.trip-page .form-group {
+  margin-bottom: 0;
 }
 
-/* Групи */
-.form-group {
-  margin-bottom: 20px;
+.trip-page h1 {
+  color: inherit;
 }
 
-/* Лейбли */
-label {
+.trip-step-surface label {
   display: block;
   margin-bottom: 8px;
-  font-weight: bold;
-  color: #555;
+  font-weight: 600;
 }
 
-/* Inputs */
-select, input {
+.trip-step-surface select,
+.trip-step-surface input {
   width: 100%;
-  padding: 10px;
+  padding: 10px 12px;
   margin-bottom: 10px;
-
   border-radius: 10px;
-  border: 1px solid #ddd;
-
   font-size: 14px;
-  transition: 0.2s;
+  transition: box-shadow 0.2s;
 }
 
-select:focus, input:focus {
-  border-color: #667eea;
+.trip-step-surface select:focus,
+.trip-step-surface input:focus {
   outline: none;
-  box-shadow: 0 0 5px rgba(102,126,234,0.5);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35);
 }
 
-/* Кнопки */
-button {
+.trip-page button:not(.interest-group__header):not(.interest-chip):not(.searchable-select__trigger):not(.searchable-select__option) {
   width: 100%;
-  padding: 12px;
-
+  padding: 13px 16px;
   border: none;
-  border-radius: 10px;
-
+  border-radius: 14px;
   cursor: pointer;
-  font-weight: bold;
-
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-
-  transition: 0.3s;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  background: linear-gradient(180deg, #fff 0%, #f3f0ff 100%);
+  color: #4f3d9e;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
-button:hover {
+.trip-page button:not(.interest-group__header):not(.interest-chip):not(.searchable-select__trigger):not(.searchable-select__option):hover {
   transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.2);
 }
 
-/* ERROR */
+.trip-page button:not(.interest-group__header):not(.interest-chip):not(.searchable-select__trigger):not(.searchable-select__option):focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 3px;
+}
+
+.trip-step-surface .trip-btn-primary {
+  margin-top: 4px;
+}
+
+.trip-page .form-actions button {
+  width: auto;
+  flex: 1;
+}
+
 .error {
-  color: #ff4d4f;
+  color: #ffc9c9;
   margin: 5px 0;
   font-size: 14px;
 }
 
-/* HOBBIES */
-.hobbies-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: center;
+/* SearchableSelect on trip page — glass */
+.trip-page .searchable-select__label {
+  color: rgba(255, 255, 255, 0.9);
 }
 
-/* Хобі кнопки */
-.hobby {
-  border: 1px solid #ddd;
-  background-color: #f5f5f5;
-  border-radius: 20px;
-  padding: 8px 16px;
-
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  font-size: 14px;
+.trip-page .searchable-select .searchable-select__trigger {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  color: rgba(255, 255, 255, 0.96) !important;
 }
 
-/* Hover */
-.hobby:hover {
-  background-color: #e0e0ff;
-  transform: scale(1.05);
+.trip-page .searchable-select .searchable-select__trigger:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
 }
 
-/* 🔥 КЛІК АНІМАЦІЯ */
-.hobby:active {
-  transform: scale(0.95);
+.trip-page .searchable-select__value--placeholder {
+  color: rgba(255, 255, 255, 0.55);
 }
 
-/* ВИБРАНЕ */
-/* HOBBY BUTTON RESET (щоб не наслідувало button стиль) */
-.hobby {
-  background: #f5f5f5 !important;
-  color: #333 !important;
-  border: 2px solid #ddd !important;
+.trip-page .searchable-select__dropdown {
+  background: rgba(30, 28, 45, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(12px);
 }
 
-/* SELECTED STATE */
-.hobby.selected {
-  background: #667eea !important;
-  color: white !important;
-  border-color: #667eea !important;
+.trip-page .searchable-select__search-wrap {
+  border-bottom-color: rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.15);
 }
 
-/* Анімація появи */
-@keyframes fadeIn {
+.trip-page .searchable-select__search {
+  color: #fff;
+}
+
+.trip-page .searchable-select .searchable-select__option {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.trip-page .searchable-select .searchable-select__option:hover,
+.trip-page .searchable-select .searchable-select__option--hl {
+  background: rgba(102, 126, 234, 0.35) !important;
+  color: #fff !important;
+}
+
+.trip-page .searchable-select__empty {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+@keyframes tripStepIn {
   from {
     opacity: 0;
-    transform: translateY(30px);
+    transform: translateY(16px) scale(0.98);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trip-step-surface {
+    animation: none;
+  }
+
+  .interest-group__body-wrap {
+    transition: none;
   }
 }

@@ -68,10 +68,31 @@ export function friendlyRegisterError(status, data) {
 
 export function friendlyTripCreateError(status, data) {
   const raw = typeof data?.message === "string" ? data.message : "";
-  if (status === 400 && raw && raw.length < 200 && !looksLikeTechnicalError(raw)) return raw;
+  const fromSpring = pickSpringErrorMessage(data);
+  const combined = fromSpring || raw;
+  if (status === 400 && combined && combined.length < 280 && !looksLikeTechnicalError(combined)) {
+    return combined;
+  }
   if (status >= 500) return "The server is busy right now. Please try again in a moment.";
-  if (raw && raw.length < 200 && !looksLikeTechnicalError(raw)) return raw;
+  if (combined && combined.length < 280 && !looksLikeTechnicalError(combined)) return combined;
   return "We couldn’t create your trip. Please try again.";
+}
+
+/** Spring Boot / validation often returns `errors` array, `error` string, or `detail`. */
+function pickSpringErrorMessage(data) {
+  if (data == null || typeof data !== "object") return "";
+  const detail = typeof data.detail === "string" ? data.detail : "";
+  if (detail && detail.length < 280) return detail;
+  const err = typeof data.error === "string" ? data.error : "";
+  if (err && err.length < 280 && err !== "Bad Request") return err;
+  const errors = data.errors;
+  if (Array.isArray(errors) && errors.length > 0) {
+    const first = errors[0];
+    if (typeof first === "string" && first.length < 280) return first;
+    if (first && typeof first.defaultMessage === "string") return first.defaultMessage;
+    if (first && typeof first.message === "string") return first.message;
+  }
+  return "";
 }
 
 export function friendlyPublicLoadError(status, resource) {

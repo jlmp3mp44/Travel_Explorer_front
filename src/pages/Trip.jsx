@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import { apiUrl } from "../config/api";
 import {
   friendlyNetworkError,
@@ -12,11 +13,25 @@ import {
   countryId,
   countryLabel,
   normalizeListResponse,
+  placeCategoryLabel,
+  placeCategoryPathKey,
+  placeInterestCode,
+  placeInterestId,
+  placeInterestLabel,
 } from "../utils/geoApi";
 import SearchableSelect from "../components/SearchableSelect";
 import "../components/Trip.css";
 
-const allHobbies = ["Culture", "Nature", "Food", "Nightlife", "Adventure", "Shopping"];
+function selectionKey(groupId, interestId) {
+  return `${groupId}:${interestId}`;
+}
+
+const TRIP_STEPS = [
+  { id: 1, label: "Dates", hint: "When do you travel?" },
+  { id: 2, label: "Place", hint: "Country & city" },
+  { id: 3, label: "Budget", hint: "Spending plan" },
+  { id: 4, label: "Interests", hint: "What to explore" },
+];
 
 function toLocalISODate(d) {
   const y = d.getFullYear();
@@ -27,7 +42,15 @@ function toLocalISODate(d) {
 
 function Trip() {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   const todayStr = useMemo(() => toLocalISODate(new Date()), []);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      navigate("/login", { replace: true, state: { from: "/trip" } });
+    }
+  }, [authLoading, user, navigate]);
 
   const [step, setStep] = useState(1);
   const [startDate, setstartDate] = useState("");
@@ -36,9 +59,19 @@ function Trip() {
   const [selectedCityId, setSelectedCityId] = useState("");
   const [budget, setBudget] = useState("");
   const [currency, setCurrency] = useState("EUR");
-  const [hobbies, setHobbies] = useState([]);
+  /** { key, groupId, interestId, label }[] — interests from API groups */
+  const [selectedInterests, setSelectedInterests] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const [placeCategories, setPlaceCategories] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState("");
+  const [expandedGroupIds, setExpandedGroupIds] = useState(() => new Set());
+  const [interestsByGroup, setInterestsByGroup] = useState({});
+  const [groupLoading, setGroupLoading] = useState({});
+  const [groupErrors, setGroupErrors] = useState({});
+  const loadedGroupsRef = useRef(new Set());
 
   const [countries, setCountries] = useState([]);
   const [countriesLoading, setCountriesLoading] = useState(true);
@@ -75,6 +108,36 @@ function Trip() {
     };
 
     loadCountries();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCategories = async () => {
+      setCategoriesLoading(true);
+      setCategoriesError("");
+      try {
+        const res = await fetch(apiUrl("/api/public/place-categories"));
+        const data = await parseResponseJson(res);
+        if (!res.ok) {
+          throw new Error("Could not load categories.");
+        }
+        const list = normalizeListResponse(data);
+        if (!cancelled) setPlaceCategories(list);
+      } catch (err) {
+        if (!cancelled) {
+          setPlaceCategories([]);
+          setCategoriesError(friendlyNetworkError(err));
+        }
+      } finally {
+        if (!cancelled) setCategoriesLoading(false);
+      }
+    };
+
+    loadCategories();
     return () => {
       cancelled = true;
     };
@@ -172,34 +235,94 @@ function Trip() {
     setStep((s) => Math.max(1, s - 1));
   };
 
-  const toggleHobby = (hobby) => {
-    if (hobbies.includes(hobby)) {
-      setHobbies(hobbies.filter((h) => h !== hobby));
-    } else {
-      setHobbies([...hobbies, hobby]);
+  const loadInterestsForGroup = async (groupId) => {
+    if (loadedGroupsRef.current.has(groupId)) return;
+
+    setGroupLoading((prev) => ({ ...prev, [groupId]: true }));
+    setGroupErrors((prev) => ({ ...prev, [groupId]: "" }));
+
+    try {
+      const res = await fetch(
+        apiUrl(`/api/public/place-categories/groups/${encodeURIComponent(groupId)}`)
+      );
+      const data = await parseResponseJson(res);
+      if (!res.ok) {
+        throw new Error("Could not load interests.");
+      }
+      const list = normalizeListResponse(data);
+      loadedGroupsRef.current.add(groupId);
+      setInterestsByGroup((prev) => ({ ...prev, [groupId]: list }));
+    } catch (err) {
+      setGroupErrors((prev) => ({
+        ...prev,
+        [groupId]: friendlyNetworkError(err),
+      }));
+    } finally {
+      setGroupLoading((prev) => ({ ...prev, [groupId]: false }));
     }
+  };
+
+  const handleToggleGroup = (groupId) => {
+    setExpandedGroupIds((prev) => {
+      const next = new Set(prev);
+      const wasOpen = next.has(groupId);
+      if (wasOpen) {
+        next.delete(groupId);
+      } else {
+        next.add(groupId);
+        loadInterestsForGroup(groupId);
+      }
+      return next;
+    });
+  };
+
+  const toggleInterest = (groupId, item) => {
+    const iid = placeInterestId(item);
+    if (!iid) return;
+    const key = selectionKey(groupId, iid);
+    const label = placeInterestLabel(item);
+    const categoryCode = placeInterestCode(item);
+    setSelectedInterests((prev) => {
+      const exists = prev.some((p) => p.key === key);
+      if (exists) {
+        return prev.filter((p) => p.key !== key);
+      }
+      return [...prev, { key, groupId, interestId: iid, categoryCode, label }];
+    });
+  };
+
+  const isInterestSelected = (groupId, item) => {
+    const iid = placeInterestId(item);
+    if (!iid) return false;
+    return selectedInterests.some((p) => p.key === selectionKey(groupId, iid));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    if (hobbies.length === 0) {
-      setError("Choose at least one interest for your trip.");
+    if (selectedInterests.length === 0) {
+      setError("Choose at least one interest from any group.");
       return;
     }
     setLoading(true);
 
     const countryName = selectedCountry ? countryLabel(selectedCountry) : "";
     const cityName = selectedCity ? cityLabel(selectedCity) : "";
+    const categoryCodes = selectedInterests
+      .map((s) => s.categoryCode || s.interestId)
+      .filter((c) => c != null && String(c).trim() !== "");
 
     const tripData = {
       startDate,
       endDate,
       country: countryName,
-      city: cityName || "",
-      budget: budget ? parseInt(budget, 10) : null,
-      currency,
-      hobbies,
+      budget: parseInt(budget, 10),
+      /** Backend DTO uses `categories` (e.g. ["museum"]), not only hobbies/interestIds */
+      categories: categoryCodes,
+      ...(cityName ? { city: cityName } : {}),
+      ...(currency ? { currency } : {}),
+      hobbies: selectedInterests.map((s) => s.label),
+      interestIds: categoryCodes,
     };
 
     try {
@@ -216,7 +339,13 @@ function Trip() {
         return;
       }
 
-      navigate(`/trip/${data.id}`);
+      try {
+        window.localStorage.setItem(`tripSnapshot:${data.id}`, JSON.stringify(data));
+      } catch {
+        /* storage may be unavailable; navigation state still covers the common case */
+      }
+
+      navigate(`/trip/${data.id}`, { state: { tripSnapshot: data } });
     } catch (err) {
       console.error(err);
       setError(friendlyNetworkError(err));
@@ -259,19 +388,63 @@ function Trip() {
     [sortedCities]
   );
 
+  const sortedPlaceCategories = useMemo(() => {
+    return [...placeCategories].sort((a, b) =>
+      placeCategoryLabel(a).localeCompare(placeCategoryLabel(b), undefined, { sensitivity: "base" })
+    );
+  }, [placeCategories]);
+
+  if (authLoading) {
+    return (
+      <div className="trip-page trip-page--auth-wait">
+        <p className="trip-auth-wait-msg">Loading…</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
   return (
-    <div className="container">
-      <h1>Plan your trip</h1>
-      <div className="trip-step-dots" aria-hidden="true">
-        {[1, 2, 3, 4].map((n) => (
-          <span key={n} className={n === step ? "dot active" : n < step ? "dot done" : "dot"} />
-        ))}
+    <div className="trip-page">
+      <div className="trip-page__body">
+      <div className="trip-page__header">
+        <p className="trip-page__kicker">New itinerary</p>
+        <h1 className="trip-page__title">Plan your trip</h1>
+        <p className="trip-page__subtitle">
+          Step {step} of 4 · {TRIP_STEPS[step - 1]?.hint}
+        </p>
+        <nav className="trip-stepper" aria-label="Planning steps">
+          {TRIP_STEPS.map((s) => {
+            const isActive = step === s.id;
+            const isDone = step > s.id;
+            return (
+              <div
+                key={s.id}
+                className={`trip-stepper__item ${isActive ? "is-active" : ""} ${isDone ? "is-done" : ""}`}
+                aria-current={isActive ? "step" : undefined}
+              >
+                <span className="trip-stepper__dot" aria-hidden="true">
+                  {isDone ? "✓" : s.id}
+                </span>
+                <span className="trip-stepper__label">{s.label}</span>
+              </div>
+            );
+          })}
+        </nav>
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form
+        className={`trip-form ${step === 4 ? "trip-form--interests" : ""}`}
+        onSubmit={handleSubmit}
+      >
         {step === 1 && (
-          <div className="form-group">
-            <label>Travel dates</label>
+          <div className="trip-step-surface form-group">
+            <div className="trip-step-heading">
+              <h2 className="trip-step-title">Travel dates</h2>
+              <p className="trip-step-desc">Pick your arrival and departure dates.</p>
+            </div>
             <div className="date-row">
               <div className="date-field">
                 <span className="date-label">Start</span>
@@ -293,14 +466,18 @@ function Trip() {
               </div>
             </div>
             {error && <p className="error">{error}</p>}
-            <button type="button" onClick={handleNext}>
-              Next
+            <button type="button" className="trip-btn-primary" onClick={handleNext}>
+              Continue
             </button>
           </div>
         )}
 
         {step === 2 && (
-          <div className="form-group trip-location-step">
+          <div className="trip-step-surface form-group trip-location-step">
+            <div className="trip-step-heading">
+              <h2 className="trip-step-title">Destination</h2>
+              <p className="trip-step-desc">Pick a country and optionally narrow down to a city.</p>
+            </div>
             {countriesError ? (
               <p className="error" role="alert">
                 {countriesError}
@@ -350,64 +527,165 @@ function Trip() {
               </button>
               <button
                 type="button"
+                className="trip-btn-primary"
                 onClick={handleNext}
                 disabled={
                   countriesLoading || !!countriesError || !countryOptions.length
                 }
               >
-                Next
+                Continue
               </button>
             </div>
           </div>
         )}
 
         {step === 3 && (
-          <div className="form-group">
-            <label>Budget</label>
-            <input type="number" min="0" value={budget} onChange={(e) => setBudget(e.target.value)} />
-            <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-              <option value="EUR">EUR</option>
-              <option value="USD">USD</option>
-            </select>
+          <div className="trip-step-surface form-group">
+            <div className="trip-step-heading">
+              <h2 className="trip-step-title">Budget</h2>
+              <p className="trip-step-desc">Rough total for the trip — you can adjust later.</p>
+            </div>
+            <div className="trip-budget-row">
+              <div className="trip-budget-amount">
+                <label htmlFor="trip-budget-input">Amount</label>
+                <input
+                  id="trip-budget-input"
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={budget}
+                  onChange={(e) => setBudget(e.target.value)}
+                />
+              </div>
+              <div className="trip-budget-currency">
+                <label htmlFor="trip-currency-select">Currency</label>
+                <select
+                  id="trip-currency-select"
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                >
+                  <option value="EUR">EUR €</option>
+                  <option value="USD">USD $</option>
+                </select>
+              </div>
+            </div>
             {error && <p className="error">{error}</p>}
             <div className="form-actions">
               <button type="button" className="btn-secondary" onClick={goBack}>
                 Back
               </button>
-              <button type="button" onClick={handleNext}>
-                Next
+              <button type="button" className="trip-btn-primary" onClick={handleNext}>
+                Continue
               </button>
             </div>
           </div>
         )}
 
         {step === 4 && (
-          <div className="form-group">
-            <label>Hobbies</label>
-            <div className="hobbies-container">
-              {allHobbies.map((hobby) => (
-                <button
-                  key={hobby}
-                  type="button"
-                  className={hobbies.includes(hobby) ? "hobby selected" : "hobby"}
-                  onClick={() => toggleHobby(hobby)}
-                >
-                  {hobby}
-                </button>
-              ))}
+          <div className="trip-interests-step">
+            <div className="trip-interests-top">
+              <h2 className="trip-interests-heading">Interests</h2>
+              <p className="trip-interests-lead">
+                Open categories to explore options. Mix selections from as many as you like.
+              </p>
+              {selectedInterests.length > 0 && (
+                <span className="trip-interests-pill" aria-live="polite">
+                  {selectedInterests.length} selected
+                </span>
+              )}
             </div>
-            {error && <p className="error">{error}</p>}
-            <div className="form-actions">
+
+            {categoriesLoading ? (
+              <p className="trip-select-hint">Loading categories…</p>
+            ) : categoriesError ? (
+              <p className="error trip-interests-error" role="alert">
+                {categoriesError}
+              </p>
+            ) : (
+              <div className="trip-categories-scroll">
+                {sortedPlaceCategories.map((cat) => {
+                  const gid = placeCategoryPathKey(cat);
+                  if (!gid) return null;
+                  const open = expandedGroupIds.has(gid);
+                  const items = interestsByGroup[gid];
+                  const gLoading = groupLoading[gid];
+                  const gErr = groupErrors[gid];
+
+                  return (
+                    <div key={gid} className={`interest-group ${open ? "interest-group--open" : ""}`}>
+                      <button
+                        type="button"
+                        className="interest-group__header"
+                        onClick={() => handleToggleGroup(gid)}
+                        aria-expanded={open}
+                      >
+                        <span className="interest-group__title">{placeCategoryLabel(cat)}</span>
+                        <span className="interest-group__chevron" aria-hidden="true">
+                          {open ? "▴" : "▾"}
+                        </span>
+                      </button>
+                      <div className={`interest-group__body-wrap ${open ? "is-open" : ""}`}>
+                        <div className="interest-group__body-inner">
+                          {gLoading && <p className="trip-select-hint">Loading interests…</p>}
+                          {!gLoading && gErr && (
+                            <p className="error interest-group__error" role="alert">
+                              {gErr}
+                            </p>
+                          )}
+                          {!gLoading && !gErr && items && items.length === 0 && (
+                            <p className="interest-group__empty">No interests in this category yet.</p>
+                          )}
+                          {!gLoading && !gErr && items && items.length > 0 && (
+                            <div className="interest-group__chips-scroll">
+                              <div className="interest-group__chips">
+                                {items.map((item, idx) => {
+                                  const iid = placeInterestId(item);
+                                  if (!iid) return null;
+                                  const selected = isInterestSelected(gid, item);
+                                  return (
+                                    <button
+                                      key={`${gid}-${iid}-${idx}`}
+                                      type="button"
+                                      className={`interest-chip ${selected ? "interest-chip--selected" : ""}`}
+                                      onClick={() => toggleInterest(gid, item)}
+                                    >
+                                      {placeInterestLabel(item)}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {error && <p className="error trip-interests-error">{error}</p>}
+            <div className="trip-interests-actions form-actions">
               <button type="button" className="btn-secondary" onClick={goBack}>
                 Back
               </button>
-              <button type="submit" disabled={loading}>
-                {loading ? "Creating..." : "Create Trip"}
+              <button
+                type="submit"
+                className="trip-btn-primary"
+                disabled={
+                  loading ||
+                  categoriesLoading ||
+                  !!categoriesError ||
+                  !sortedPlaceCategories.length
+                }
+              >
+                {loading ? "Creating your trip…" : "Create trip"}
               </button>
             </div>
           </div>
         )}
       </form>
+      </div>
     </div>
   );
 }

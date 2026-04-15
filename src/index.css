@@ -11,6 +11,15 @@
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
+  /* App-wide trip / auth brand (aligned with Home + Trip wizard) */
+  --brand: #667eea;
+  --brand-2: #764ba2;
+  --brand-mid: #a78bfa;
+  --page-bg: linear-gradient(165deg, #eef0f8 0%, #e4e9f5 45%, #e8ecf5 100%);
+  --surface-glass: rgba(255, 255, 255, 0.88);
+  --surface-border: rgba(102, 126, 234, 0.18);
+  --btn-shadow: 0 8px 24px rgba(102, 126, 234, 0.32);
+
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
@@ -43,6 +52,10 @@
     --social-bg: rgba(47, 48, 58, 0.5);
     --shadow:
       rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+    --page-bg: linear-gradient(165deg, #14151c 0%, #1a1c26 50%, #16171d 100%);
+    --surface-glass: rgba(30, 32, 42, 0.92);
+    --surface-border: rgba(167, 139, 250, 0.22);
+    --btn-shadow: 0 8px 28px rgba(99, 102, 241, 0.25);
   }
 
   #social .button-icon {
@@ -52,6 +65,17 @@
 
 body {
   margin: 0;
+  min-height: 100svh;
+  background: var(--page-bg);
+  background-attachment: fixed;
+}
+
+.app-main {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 #root {

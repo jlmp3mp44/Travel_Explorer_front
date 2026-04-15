@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import "../components/Result.css";
 
 function Result() {
   const location = useLocation();
@@ -25,7 +26,6 @@ function Result() {
     setTrip(mockTrip);
   }, []);
 
-  // 🔥 рахуємо кількість днів
   const getDays = () => {
     if (!dateFrom || !dateTo) return null;
 
@@ -40,60 +40,95 @@ function Result() {
 
   const days = getDays();
 
-  // ❗ перевірка
   if (!dateFrom || !dateTo || !budget || !hobbies || hobbies.length === 0) {
     return (
-      <p>
-        We don’t have your trip details.{" "}
-        <button type="button" onClick={() => navigate("/")}>
-          Back to home
-        </button>
-      </p>
+      <div className="result-missing">
+        <div className="result-empty">
+          <p>
+            We don&apos;t have your trip details. Start from the trip planner to build an
+            itinerary.
+          </p>
+          <button type="button" className="result-btn-primary" onClick={() => navigate("/")}>
+            Back to home
+          </button>
+        </div>
+      </div>
     );
   }
 
   return (
-    <div className="container">
-      <h1>Your Trip Plan</h1>
+    <div className="result-page">
+      <button type="button" className="result-back" onClick={() => navigate(-1)}>
+        ← Back
+      </button>
 
-      <p>
-        <strong>Dates:</strong> {dateFrom} → {dateTo} <br />
-        {days && (
-          <>
-            <strong>Duration:</strong> {days} {days === 1 ? "day" : "days"} <br />
-          </>
-        )}
+      <header className="result-hero">
+        <h1 className="result-title">Your trip plan</h1>
+        <p className="result-lead">
+          Here&apos;s a quick summary and a sample day-by-day outline. (Demo data — connect
+          your backend when ready.)
+        </p>
+      </header>
 
-        {country && (
-          <>
-            <strong>Country:</strong> {country} <br />
-          </>
-        )}
-
-        {city && (
-          <>
-            <strong>City:</strong> {city} <br />
-          </>
-        )}
-
-        <strong>Budget:</strong> {budget} {currency} <br />
-
-        <strong>Hobbies:</strong> {hobbies.join(", ")}
-      </p>
-
-      {trip &&
-        Object.entries(trip).map(([day, activities]) => (
-          <div key={day}>
-            <h3>{day}</h3>
-            <ul>
-              {activities.map((act, idx) => (
-                <li key={idx}>{act}</li>
-              ))}
-            </ul>
+      <div className="result-summary" aria-label="Trip summary">
+        <div className="result-stat">
+          <span className="result-stat-label">Dates</span>
+          <p className="result-stat-value">
+            {dateFrom} → {dateTo}
+          </p>
+        </div>
+        {days != null ? (
+          <div className="result-stat">
+            <span className="result-stat-label">Duration</span>
+            <p className="result-stat-value">
+              {days} {days === 1 ? "day" : "days"}
+            </p>
           </div>
-        ))}
+        ) : null}
+        {country ? (
+          <div className="result-stat">
+            <span className="result-stat-label">Country</span>
+            <p className="result-stat-value">{country}</p>
+          </div>
+        ) : null}
+        {city ? (
+          <div className="result-stat">
+            <span className="result-stat-label">City</span>
+            <p className="result-stat-value">{city}</p>
+          </div>
+        ) : null}
+        <div className="result-stat">
+          <span className="result-stat-label">Budget</span>
+          <p className="result-stat-value">
+            {budget} {currency}
+          </p>
+        </div>
+        <div className="result-stat" style={{ gridColumn: "1 / -1" }}>
+          <span className="result-stat-label">Interests</span>
+          <p className="result-stat-value">{hobbies.join(", ")}</p>
+        </div>
+      </div>
 
-      <button onClick={() => navigate("/")}>Back</button>
+      <h2 className="result-section-title">Sample itinerary</h2>
+      <div className="result-days">
+        {trip &&
+          Object.entries(trip).map(([day, activities]) => (
+            <article key={day} className="result-day">
+              <h3>{day}</h3>
+              <ul>
+                {activities.map((act, idx) => (
+                  <li key={idx}>{act}</li>
+                ))}
+              </ul>
+            </article>
+          ))}
+      </div>
+
+      <div className="result-actions">
+        <button type="button" className="result-btn-primary" onClick={() => navigate("/")}>
+          Back to home
+        </button>
+      </div>
     </div>
   );
 }

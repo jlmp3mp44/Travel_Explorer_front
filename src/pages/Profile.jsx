@@ -29,11 +29,23 @@ function Profile() {
   const displayUsername = user.username ?? username;
   const displayEmail = user.email ?? email;
 
+  const initial =
+    displayUsername && String(displayUsername).length > 0
+      ? String(displayUsername).charAt(0).toUpperCase()
+      : "?";
+
   return (
     <div className="profile-page">
       <div className="profile-card">
-        <h1>Your profile</h1>
-        <p className="profile-lead">Personal information tied to your account.</p>
+        <div className="profile-header">
+          <div className="profile-avatar" aria-hidden="true">
+            {initial}
+          </div>
+          <div>
+            <h1>Your profile</h1>
+            <p className="profile-lead">Personal information tied to your account.</p>
+          </div>
+        </div>
 
         <section className="profile-section" aria-labelledby="profile-personal-heading">
           <h2 id="profile-personal-heading">Personal info</h2>

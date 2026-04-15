@@ -16,15 +16,17 @@ function App() {
       <Router>
         <Navbar />
 
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/trip" element={<Trip />} />
-          <Route path="/result" element={<Result />} />
-          <Route path="/trip/:id" element={<TripDetails />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/profile" element={<Profile />} />
-        </Routes>
+        <main className="app-main">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/trip" element={<Trip />} />
+            <Route path="/result" element={<Result />} />
+            <Route path="/trip/:id" element={<TripDetails />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/profile" element={<Profile />} />
+          </Routes>
+        </main>
       </Router>
     </AuthProvider>
   );
