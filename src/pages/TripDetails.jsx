@@ -12,6 +12,7 @@ import {
   resolveTripDaysForDisplay,
   unwrapTripPayload,
 } from "../utils/tripItinerary";
+import TripRouteMap from "../components/TripRouteMap";
 import "../components/TripDetails.css";
 
 function readStoredTripSnapshot(id) {
@@ -229,13 +230,7 @@ function TripDetails() {
           </section>
         </div>
 
-        <aside className="trip-map-aside" aria-label="Map preview (coming soon)">
-          <span className="trip-map-placeholder-icon" aria-hidden="true">
-            🗺️
-          </span>
-          <p className="trip-map-placeholder-title">Map</p>
-          <p className="trip-map-placeholder-hint">Your route will appear here in a future update.</p>
-        </aside>
+        <TripRouteMap trip={trip} displayDays={displayDays} />
       </div>
     </div>
   );

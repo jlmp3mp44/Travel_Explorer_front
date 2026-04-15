@@ -443,3 +443,85 @@
   max-width: 240px;
   line-height: 1.45;
 }
+
+/* Google Maps embed */
+.trip-map-aside--embed {
+  position: sticky;
+  top: 88px;
+  display: block;
+  min-height: 360px;
+  height: min(52vh, 480px);
+  padding: 0;
+  gap: 0;
+  border: 1px solid rgba(102, 126, 234, 0.22);
+  border-radius: 16px;
+  background: #dfe3ec;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.trip-route-map {
+  width: 100%;
+  height: 100%;
+  min-height: 360px;
+}
+
+.trip-route-map-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(250, 251, 255, 0.94);
+  color: var(--text-h, #1a1a2e);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.trip-route-map-overlay--error {
+  color: #8b1538;
+  text-align: center;
+  padding: 16px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.trip-route-map-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(102, 126, 234, 0.2);
+  border-top-color: var(--brand, #667eea);
+  border-radius: 50%;
+  animation: trip-details-spin 0.75s linear infinite;
+}
+
+.trip-map-aside--error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+  padding: 20px;
+  border: 1px dashed rgba(180, 0, 32, 0.3);
+  background: rgba(255, 245, 245, 0.75);
+}
+
+.trip-map-error-msg {
+  margin: 0;
+  text-align: center;
+  font-size: 0.9rem;
+  color: #7a1a1a;
+  line-height: 1.45;
+}
+
+@media (max-width: 960px) {
+  .trip-map-aside--embed {
+    position: relative;
+    top: auto;
+    min-height: 280px;
+    height: min(42vh, 400px);
+  }
+}
