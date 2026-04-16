@@ -27,8 +27,19 @@ function coercePlacesArray(raw) {
   return [];
 }
 
+function pickNumericId(v) {
+  if (v == null || v === "") return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+}
+
 function normalizeActivity(act) {
   if (!act) return null;
+  const id = pickNumericId(act.id);
+  const sortOrder = act.sortOrder != null ? Number(act.sortOrder) : undefined;
+  const averageRating =
+    act.averageRating != null ? Number(act.averageRating) : undefined;
+  const ratingCount = act.ratingCount != null ? Number(act.ratingCount) : undefined;
   const startTime = formatTimeSlot(act.startTime ?? act.start ?? "");
   const endTime = formatTimeSlot(act.endTime ?? act.end ?? "");
   const placesRaw = coercePlacesArray(
@@ -36,15 +47,22 @@ function normalizeActivity(act) {
   );
   const places = placesRaw.map(normalizePlace).filter(Boolean);
 
+  const meta = {
+    id,
+    sortOrder: Number.isFinite(sortOrder) ? sortOrder : undefined,
+    averageRating: Number.isFinite(averageRating) ? averageRating : undefined,
+    ratingCount: Number.isFinite(ratingCount) ? ratingCount : undefined,
+  };
+
   /* Activity-level title if no nested places (some APIs flatten this) */
   if (places.length === 0) {
     const flat = act.title ?? act.placeName ?? act.name ?? act.label;
     if (flat != null && String(flat).trim() !== "") {
-      return { startTime, endTime, places: [{ title: String(flat) }] };
+      return { ...meta, startTime, endTime, places: [{ title: String(flat) }] };
     }
   }
 
-  return { startTime, endTime, places };
+  return { ...meta, startTime, endTime, places };
 }
 
 /** Show time as HH:mm when value looks like ISO or has T */
@@ -105,11 +123,17 @@ function normalizeDay(day) {
     day.dateString ??
     (typeof day.day === "string" ? day.day : day.day);
   const date = coerceDateValue(rawDate);
+  const dayId = pickNumericId(day.id);
   const activitiesRaw = coerceActivitiesArray(
     day.activities ?? day.activityList ?? day.activity_list ?? day.slots ?? day.items ?? day.blocks ?? day.events
   );
-  const activities = activitiesRaw.map(normalizeActivity).filter(Boolean);
-  return { date: date ? String(date) : "", activities };
+  let activities = activitiesRaw.map(normalizeActivity).filter(Boolean);
+  activities.sort((a, b) => {
+    const ao = a.sortOrder ?? 0;
+    const bo = b.sortOrder ?? 0;
+    return ao - bo;
+  });
+  return { id: dayId, date: date ? String(date) : "", activities };
 }
 
 /**

@@ -1,6 +1,12 @@
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiUrl } from "../config/api";
+import {
+  postActivityRating,
+  postTripRating,
+  reorderDayActivities,
+  replaceActivity,
+} from "../api/tripPublic";
 import {
   friendlyNetworkError,
   friendlyPublicLoadError,
@@ -12,8 +18,46 @@ import {
   resolveTripDaysForDisplay,
   unwrapTripPayload,
 } from "../utils/tripItinerary";
+import { useAuth } from "../context/AuthContext";
 import TripRouteMap from "../components/TripRouteMap";
 import "../components/TripDetails.css";
+
+function formatAvg(n) {
+  if (n == null || Number.isNaN(Number(n))) return null;
+  return Number(n).toFixed(1);
+}
+
+/** Move array item from `from` to `to` (inclusive indices). */
+function moveItem(arr, from, to) {
+  if (from === to) return arr;
+  const next = [...arr];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
+}
+
+function activityDndKey(dayId, index) {
+  return `${dayId}-${index}`;
+}
+
+function StarPicker({ onPick, disabled, label = "Rate" }) {
+  return (
+    <div className="trip-star-picker" role="group" aria-label={label}>
+      {[1, 2, 3, 4, 5].map((s) => (
+        <button
+          key={s}
+          type="button"
+          className="trip-star-picker__btn"
+          disabled={disabled}
+          onClick={() => onPick(s)}
+          aria-label={`${label}: ${s} out of 5 stars`}
+        >
+          ★
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function readStoredTripSnapshot(id) {
   if (typeof window === "undefined" || !id) return null;
@@ -40,6 +84,7 @@ function TripDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
 
   /** Full trip JSON from POST /trips — used when GET returns empty `days`. */
   const postCreateSnapshot = useMemo(() => {
@@ -52,6 +97,10 @@ function TripDetails() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [actionError, setActionError] = useState("");
+  const [busy, setBusy] = useState(null);
+  const [dndDraggingKey, setDndDraggingKey] = useState(null);
+  const [dndDropTargetKey, setDndDropTargetKey] = useState(null);
 
   const displayDays = useMemo(() => {
     if (!trip) return [];
@@ -81,6 +130,125 @@ function TripDetails() {
       setRefreshing(false);
     }
   }, [id, postCreateSnapshot]);
+
+  const handleRateTrip = useCallback(
+    async (stars) => {
+      if (!trip?.id || user?.id == null) return;
+      setActionError("");
+      setBusy("rate-trip");
+      try {
+        await postTripRating(trip.id, user.id, stars);
+        await refetchTrip();
+      } catch (err) {
+        setActionError(err instanceof Error ? err.message : "Could not save rating.");
+      } finally {
+        setBusy(null);
+      }
+    },
+    [trip?.id, user?.id, refetchTrip]
+  );
+
+  const handleRateActivity = useCallback(
+    async (activityId, stars) => {
+      if (!trip?.id || user?.id == null) return;
+      setActionError("");
+      setBusy(`rate-act:${activityId}`);
+      try {
+        await postActivityRating(trip.id, activityId, user.id, stars);
+        await refetchTrip();
+      } catch (err) {
+        setActionError(err instanceof Error ? err.message : "Could not save rating.");
+      } finally {
+        setBusy(null);
+      }
+    },
+    [trip?.id, user?.id, refetchTrip]
+  );
+
+  const handleReorderDay = useCallback(
+    async (day, reorderedActivities) => {
+      if (!trip?.id || day.id == null) return;
+      const ids = reorderedActivities.map((a) => a.id).filter((x) => x != null);
+      if (ids.length !== reorderedActivities.length) return;
+      setActionError("");
+      setBusy(`reorder:${day.id}`);
+      try {
+        await reorderDayActivities(trip.id, day.id, ids);
+        await refetchTrip();
+      } catch (err) {
+        setActionError(err instanceof Error ? err.message : "Could not reorder activities.");
+      } finally {
+        setBusy(null);
+      }
+    },
+    [trip?.id, refetchTrip]
+  );
+
+  const handleActivityDragStart = useCallback((e, day, fromIndex) => {
+    if (day.id == null) return;
+    e.dataTransfer.setData(
+      "application/x-trip-activity-order",
+      JSON.stringify({ dayId: day.id, fromIndex })
+    );
+    e.dataTransfer.effectAllowed = "move";
+    setDndDraggingKey(activityDndKey(day.id, fromIndex));
+  }, []);
+
+  const handleActivityDragEnd = useCallback(() => {
+    setDndDraggingKey(null);
+    setDndDropTargetKey(null);
+  }, []);
+
+  const handleActivityDragOver = useCallback((e, day, overIndex) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (day.id != null) setDndDropTargetKey(activityDndKey(day.id, overIndex));
+  }, []);
+
+  const handleActivityDrop = useCallback(
+    (e, day, toIndex) => {
+      e.preventDefault();
+      const raw = e.dataTransfer.getData("application/x-trip-activity-order");
+      if (!raw) return;
+      let payload;
+      try {
+        payload = JSON.parse(raw);
+      } catch {
+        return;
+      }
+      const { dayId, fromIndex } = payload;
+      if (dayId !== day.id || typeof fromIndex !== "number") return;
+      if (fromIndex === toIndex) {
+        handleActivityDragEnd();
+        return;
+      }
+      const acts = [...(day.activities ?? [])];
+      const reordered = moveItem(acts, fromIndex, toIndex);
+      handleReorderDay(day, reordered);
+      setDndDraggingKey(null);
+      setDndDropTargetKey(null);
+    },
+    [handleActivityDragEnd, handleReorderDay]
+  );
+
+  const handleReplaceActivity = useCallback(
+    async (activityId) => {
+      if (!trip?.id) return;
+      setActionError("");
+      setBusy(`replace:${activityId}`);
+      try {
+        const data = await replaceActivity(trip.id, activityId);
+        const merged = mergeTripWithPostResponse(unwrapTripPayload(data), postCreateSnapshot);
+        persistTripSnapshot(merged);
+        setTrip(merged);
+      } catch (err) {
+        setActionError(err instanceof Error ? err.message : "Could not replace activity.");
+      } finally {
+        setBusy(null);
+      }
+    },
+    [trip?.id, postCreateSnapshot]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -159,11 +327,17 @@ function TripDetails() {
           type="button"
           className="trip-refresh-btn"
           onClick={() => refetchTrip()}
-          disabled={refreshing}
+          disabled={refreshing || !!busy}
         >
           {refreshing ? "Refreshing…" : "Refresh itinerary"}
         </button>
       </div>
+
+      {actionError ? (
+        <p className="trip-action-error" role="alert">
+          {actionError}
+        </p>
+      ) : null}
 
       <div className="trip-details-grid">
         <div className="trip-details-main">
@@ -177,6 +351,34 @@ function TripDetails() {
                 </span>
                 {trip.startDate} — {trip.endDate}
               </span>
+              {(trip.averageRating != null || (trip.ratingCount ?? 0) > 0) && (
+                <span className="trip-meta-pill">
+                  <span className="icon" aria-hidden="true">
+                    ★
+                  </span>
+                  {formatAvg(trip.averageRating) ?? "—"} · {trip.ratingCount ?? 0}{" "}
+                  {trip.ratingCount === 1 ? "rating" : "ratings"}
+                </span>
+              )}
+            </div>
+            <div className="trip-hero-rating">
+              {user?.id != null ? (
+                <div className="trip-hero-rating-row">
+                  <span className="trip-hero-rating-label">Rate this trip</span>
+                  <StarPicker
+                    onPick={handleRateTrip}
+                    disabled={!!busy}
+                    label="Rate this trip"
+                  />
+                </div>
+              ) : (
+                <p className="trip-rate-hint">
+                  <Link to="/login" state={{ from: `/trip/${id}` }}>
+                    Sign in
+                  </Link>{" "}
+                  to rate this trip.
+                </p>
+              )}
             </div>
           </header>
 
@@ -186,45 +388,119 @@ function TripDetails() {
               <p className="trip-itinerary-empty">No itinerary details yet.</p>
             ) : (
               <div className="trip-days-scroll" role="region" aria-label="Daily itinerary">
-                {displayDays.map((day, index) => (
-                  <article key={`${day.date}-${index}`} className="trip-day-card">
-                    <div className="trip-day-header">
-                      <span className="trip-day-badge">Day {index + 1}</span>
-                      <span className="trip-day-date">{day.date || "—"}</span>
-                    </div>
+                {displayDays.map((day, index) => {
+                  const dayKey = day.id != null ? `day-${day.id}` : `${day.date}-${index}`;
+                  const canReorder =
+                    day.id != null &&
+                    (day.activities ?? []).length > 1 &&
+                    (day.activities ?? []).every((a) => a.id != null);
+                  return (
+                    <article key={dayKey} className="trip-day-card">
+                      <div className="trip-day-header">
+                        <span className="trip-day-badge">Day {index + 1}</span>
+                        <span className="trip-day-date">{day.date || "—"}</span>
+                      </div>
 
-                    {day.activities?.map((activity, i) => {
-                      const showTimes =
-                        (activity.startTime && activity.startTime !== "—") ||
-                        (activity.endTime && activity.endTime !== "—");
-                      const stopsBefore =
-                        day.activities?.slice(0, i).reduce((n, a) => n + (a.places?.length ?? 0), 0) ??
-                        0;
-                      return (
-                        <div key={i} className="trip-activity">
-                          {showTimes ? (
-                            <div className="trip-activity-time">
-                              {activity.startTime} – {activity.endTime}
+                      {day.activities?.map((activity, i) => {
+                        const showTimes =
+                          (activity.startTime && activity.startTime !== "—") ||
+                          (activity.endTime && activity.endTime !== "—");
+                        const stopsBefore =
+                          day.activities?.slice(0, i).reduce((n, a) => n + (a.places?.length ?? 0), 0) ??
+                          0;
+                        const actKey =
+                          activity.id != null ? `activity-${activity.id}` : `activity-${index}-${i}`;
+                        const showAvg =
+                          activity.averageRating != null || (activity.ratingCount ?? 0) > 0;
+                        const dndKey = day.id != null ? activityDndKey(day.id, i) : null;
+                        return (
+                          <div
+                            key={actKey}
+                            className={[
+                              "trip-activity",
+                              canReorder && "trip-activity--reorderable",
+                              canReorder && dndDropTargetKey === dndKey && "trip-activity--drop-target",
+                              canReorder && dndDraggingKey === dndKey && "trip-activity--dragging",
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                            onDragOver={
+                              canReorder ? (e) => handleActivityDragOver(e, day, i) : undefined
+                            }
+                            onDrop={canReorder ? (e) => handleActivityDrop(e, day, i) : undefined}
+                          >
+                            {canReorder && (
+                              <div
+                                className="trip-activity-drag-handle"
+                                draggable={!busy}
+                                onDragStart={(e) => handleActivityDragStart(e, day, i)}
+                                onDragEnd={handleActivityDragEnd}
+                                title="Hold and drag to move this stop"
+                                aria-label="Drag to reorder this stop"
+                              >
+                                <span className="trip-activity-drag-grip" aria-hidden="true" />
+                              </div>
+                            )}
+                            <div
+                              className={
+                                canReorder
+                                  ? "trip-activity-main"
+                                  : "trip-activity-main trip-activity-main--solo"
+                              }
+                            >
+                            <div className="trip-activity-toolbar">
+                              {activity.id != null && (
+                                <button
+                                  type="button"
+                                  className="trip-activity-replace-btn"
+                                  onClick={() => handleReplaceActivity(activity.id)}
+                                  disabled={!!busy}
+                                  title="Replace with another place (demo)"
+                                >
+                                  Replace stop
+                                </button>
+                              )}
+                              {showAvg && (
+                                <span className="trip-activity-rating-summary" title="Average rating">
+                                  ★ {formatAvg(activity.averageRating) ?? "—"} · {activity.ratingCount ?? 0}
+                                </span>
+                              )}
+                              {user?.id != null && activity.id != null && (
+                                <div className="trip-activity-rate">
+                                  <span className="trip-activity-rate-label">Rate</span>
+                                  <StarPicker
+                                    onPick={(stars) => handleRateActivity(activity.id, stars)}
+                                    disabled={!!busy}
+                                    label="Rate this stop"
+                                  />
+                                </div>
+                              )}
                             </div>
-                          ) : null}
+                            {showTimes ? (
+                              <div className="trip-activity-time">
+                                {activity.startTime} – {activity.endTime}
+                              </div>
+                            ) : null}
 
-                          {activity.places?.length > 0 ? (
-                            <ul className="trip-places">
-                              {activity.places.map((place, j) => (
-                                <li key={j}>
-                                  <span className="trip-place-index">{stopsBefore + j + 1}.</span>
-                                  {place.title}
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <p className="trip-activity-empty">No place name in this stop.</p>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </article>
-                ))}
+                            {activity.places?.length > 0 ? (
+                              <ul className="trip-places">
+                                {activity.places.map((place, j) => (
+                                  <li key={j}>
+                                    <span className="trip-place-index">{stopsBefore + j + 1}.</span>
+                                    {place.title}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="trip-activity-empty">No place name in this stop.</p>
+                            )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </article>
+                  );
+                })}
               </div>
             )}
           </section>
