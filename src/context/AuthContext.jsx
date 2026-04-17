@@ -52,6 +52,7 @@ export const AuthProvider = ({ children }) => {
         user,
         username: user?.username ?? null,
         email: user?.email ?? null,
+        phone: user?.phoneNumber ?? user?.phone ?? null,
         roles: user?.roles ?? [],
         login,
         logout,

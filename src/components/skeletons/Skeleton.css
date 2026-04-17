@@ -1,0 +1,192 @@
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.skeleton-line {
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    rgba(102, 126, 234, 0.12) 0%,
+    rgba(102, 126, 234, 0.22) 45%,
+    rgba(102, 126, 234, 0.12) 90%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-line {
+    animation: none;
+    background: rgba(102, 126, 234, 0.15);
+  }
+}
+
+.skeleton-trip-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 600px) {
+  .skeleton-trip-list--home {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) {
+  .skeleton-trip-list--home {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.skeleton-trip-card {
+  min-height: 168px;
+  border-radius: 14px;
+  border: 1px solid rgba(102, 126, 234, 0.14);
+  background: var(--bg, #fff);
+  overflow: hidden;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skeleton-trip-card::before {
+  content: "";
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  margin: -16px -16px 4px -16px;
+  background: rgba(102, 126, 234, 0.2);
+}
+
+.skeleton-trip-card__title {
+  height: 18px;
+  width: 72%;
+}
+
+.skeleton-trip-card__line {
+  height: 14px;
+  width: 100%;
+}
+
+.skeleton-trip-card__line--short {
+  width: 55%;
+}
+
+.skeleton-trip-card__date {
+  height: 14px;
+  width: 48%;
+  margin-top: auto;
+}
+
+.trip-details-skeleton {
+  flex: 1;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 88px 24px 48px;
+  box-sizing: border-box;
+}
+
+.trip-details-skeleton__toolbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.trip-details-skeleton__btn {
+  height: 40px;
+  width: 96px;
+  border-radius: 10px;
+}
+
+.trip-details-skeleton__btn--wide {
+  width: 140px;
+}
+
+.trip-details-skeleton__grid {
+  display: grid;
+  grid-template-columns: 1fr min(38%, 400px);
+  gap: 28px;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .trip-details-skeleton__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.trip-details-skeleton__hero-title {
+  height: 36px;
+  width: 70%;
+  max-width: 420px;
+  margin-bottom: 14px;
+}
+
+.trip-details-skeleton__hero-desc {
+  height: 16px;
+  width: 92%;
+  margin-bottom: 8px;
+}
+
+.trip-details-skeleton__hero-desc--2 {
+  width: 64%;
+  margin-bottom: 20px;
+}
+
+.trip-details-skeleton__pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.trip-details-skeleton__pill {
+  height: 32px;
+  width: 160px;
+  border-radius: 999px;
+}
+
+.trip-details-skeleton__day {
+  border-radius: 14px;
+  border: 1px solid rgba(102, 126, 234, 0.12);
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.trip-details-skeleton__day-head {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.trip-details-skeleton__badge {
+  height: 22px;
+  width: 72px;
+  border-radius: 8px;
+}
+
+.trip-details-skeleton__date {
+  height: 18px;
+  width: 100px;
+  border-radius: 8px;
+}
+
+.trip-details-skeleton__activity {
+  height: 88px;
+  border-radius: 12px;
+  margin-bottom: 10px;
+}
+
+.trip-details-skeleton__map {
+  min-height: 360px;
+  border-radius: 16px;
+  border: 1px solid rgba(102, 126, 234, 0.14);
+}

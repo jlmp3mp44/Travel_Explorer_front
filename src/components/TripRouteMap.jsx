@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { importLibrary, setOptions } from "@googlemaps/js-api-loader";
 import { GOOGLE_MAPS_API_KEY } from "../config/maps";
+import { getActivityPlacesForDisplay } from "../utils/tripItinerary";
 
 function trimStr(v) {
   if (v == null) return "";
@@ -20,14 +21,14 @@ function destinationQuery(trip) {
 /**
  * Ordered geocode queries for itinerary stops (place + region for accuracy).
  * @param {Record<string, unknown> | null | undefined} trip
- * @param {Array<{ activities?: Array<{ places?: Array<{ title?: string }> }> }>} displayDays
+ * @param {Array<{ activities?: Array<Record<string, unknown>> }>} displayDays
  */
 function collectGeocodeQueries(trip, displayDays) {
   const region = destinationQuery(trip);
   const queries = [];
   for (const day of displayDays) {
     for (const act of day.activities || []) {
-      for (const p of act.places || []) {
+      for (const p of getActivityPlacesForDisplay(act)) {
         const title = trimStr(p?.title);
         if (!title) continue;
         queries.push(region ? `${title}, ${region}` : title);

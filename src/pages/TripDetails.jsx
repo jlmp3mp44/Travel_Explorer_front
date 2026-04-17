@@ -1,11 +1,13 @@
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { apiUrl } from "../config/api";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
+  fetchMyTrips,
   postActivityRating,
   postTripRating,
+  publicTripUrl,
   reorderDayActivities,
   replaceActivity,
+  updatePublicTrip,
 } from "../api/tripPublic";
 import {
   friendlyNetworkError,
@@ -14,12 +16,18 @@ import {
 } from "../utils/friendlyErrors";
 import {
   formatTripHeroTitle,
+  getActivityPlacesForDisplay,
   mergeTripWithPostResponse,
+  REPLACEMENT_REASON_LABELS,
   resolveTripDaysForDisplay,
   unwrapTripPayload,
 } from "../utils/tripItinerary";
 import { useAuth } from "../context/AuthContext";
+import { isTripOwnerFromPayload } from "../utils/tripOwnership";
+import { extractTripUserRating } from "../utils/ratings";
+import { persistUserTripRating, readStoredUserRatings } from "../utils/tripRatingStorage";
 import TripRouteMap from "../components/TripRouteMap";
+import TripDetailsSkeleton from "../components/skeletons/TripDetailsSkeleton";
 import "../components/TripDetails.css";
 
 function formatAvg(n) {
@@ -40,17 +48,31 @@ function activityDndKey(dayId, index) {
   return `${dayId}-${index}`;
 }
 
-function StarPicker({ onPick, disabled, label = "Rate" }) {
+function StarPicker({ value, onPick, disabled, label = "Rate" }) {
+  const v = value != null && value >= 1 && value <= 5 ? value : null;
   return (
-    <div className="trip-star-picker" role="group" aria-label={label}>
+    <div
+      className="trip-star-picker"
+      role="radiogroup"
+      aria-label={label}
+      aria-valuemin={1}
+      aria-valuemax={5}
+      aria-valuenow={v ?? undefined}
+    >
       {[1, 2, 3, 4, 5].map((s) => (
         <button
           key={s}
           type="button"
-          className="trip-star-picker__btn"
+          className={[
+            "trip-star-picker__btn",
+            v != null && s <= v ? "trip-star-picker__btn--filled" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
           disabled={disabled}
           onClick={() => onPick(s)}
           aria-label={`${label}: ${s} out of 5 stars`}
+          aria-pressed={v != null && s <= v ? "true" : "false"}
         >
           ★
         </button>
@@ -101,6 +123,15 @@ function TripDetails() {
   const [busy, setBusy] = useState(null);
   const [dndDraggingKey, setDndDraggingKey] = useState(null);
   const [dndDropTargetKey, setDndDropTargetKey] = useState(null);
+  /** `{ activityId }` while choosing replace reason */
+  const [replaceModal, setReplaceModal] = useState(null);
+  const replaceModalDescId = useId();
+  const replaceModalFirstFocusRef = useRef(null);
+  const [canEditVisibility, setCanEditVisibility] = useState(null);
+  const [visibilityBusy, setVisibilityBusy] = useState(false);
+  const [shareStatus, setShareStatus] = useState("");
+  /** Fallback when API omits user rating on GET */
+  const [localRatings, setLocalRatings] = useState({ trip: undefined, activities: {} });
 
   const displayDays = useMemo(() => {
     if (!trip) return [];
@@ -109,12 +140,33 @@ function TripDetails() {
 
   const heroTitle = useMemo(() => formatTripHeroTitle(trip), [trip]);
 
+  /** Cached ratings from localStorage (survives reload when GET omits userRating). */
+  const storedRatings = useMemo(() => {
+    if (!trip?.id || user?.id == null) return { trip: undefined, activities: {} };
+    return readStoredUserRatings(user.id, trip.id);
+  }, [trip?.id, user?.id]);
+
+  const tripStarValue = useMemo(() => {
+    if (!trip) return undefined;
+    const fromApi = extractTripUserRating(trip);
+    if (fromApi != null) return fromApi;
+    if (localRatings.trip != null) return localRatings.trip;
+    return storedRatings.trip;
+  }, [trip, localRatings.trip, storedRatings.trip]);
+
+  const tripIsPublic = useMemo(() => {
+    if (!trip) return true;
+    const v = trip.isPublic ?? trip.is_public;
+    if (v === false) return false;
+    return true;
+  }, [trip]);
+
   const refetchTrip = useCallback(async () => {
     if (!id) return;
     setRefreshing(true);
     setLoadError("");
     try {
-      const res = await fetch(apiUrl(`/api/public/trips/${id}`));
+      const res = await fetch(publicTripUrl(id, user?.id));
       const data = await parseResponseJson(res);
       if (!res.ok) {
         setLoadError(friendlyPublicLoadError(res.status, "trip"));
@@ -129,7 +181,7 @@ function TripDetails() {
     } finally {
       setRefreshing(false);
     }
-  }, [id, postCreateSnapshot]);
+  }, [id, postCreateSnapshot, user?.id]);
 
   const handleRateTrip = useCallback(
     async (stars) => {
@@ -138,6 +190,8 @@ function TripDetails() {
       setBusy("rate-trip");
       try {
         await postTripRating(trip.id, user.id, stars);
+        persistUserTripRating(user.id, trip.id, { trip: stars });
+        setLocalRatings((prev) => ({ ...prev, trip: stars }));
         await refetchTrip();
       } catch (err) {
         setActionError(err instanceof Error ? err.message : "Could not save rating.");
@@ -155,6 +209,13 @@ function TripDetails() {
       setBusy(`rate-act:${activityId}`);
       try {
         await postActivityRating(trip.id, activityId, user.id, stars);
+        persistUserTripRating(user.id, trip.id, {
+          activities: { [String(activityId)]: stars },
+        });
+        setLocalRatings((prev) => ({
+          ...prev,
+          activities: { ...prev.activities, [activityId]: stars },
+        }));
         await refetchTrip();
       } catch (err) {
         setActionError(err instanceof Error ? err.message : "Could not save rating.");
@@ -231,30 +292,132 @@ function TripDetails() {
     [handleActivityDragEnd, handleReorderDay]
   );
 
-  const handleReplaceActivity = useCallback(
-    async (activityId) => {
-      if (!trip?.id) return;
+  const handleReplaceReason = useCallback(
+    async (reason) => {
+      if (!trip?.id || user?.id == null || !replaceModal?.activityId) return;
+      const activityId = replaceModal.activityId;
       setActionError("");
       setBusy(`replace:${activityId}`);
       try {
-        const data = await replaceActivity(trip.id, activityId);
+        const data = await replaceActivity(trip.id, activityId, {
+          userId: user.id,
+          reason,
+        });
         const merged = mergeTripWithPostResponse(unwrapTripPayload(data), postCreateSnapshot);
         persistTripSnapshot(merged);
         setTrip(merged);
+        setReplaceModal(null);
       } catch (err) {
         setActionError(err instanceof Error ? err.message : "Could not replace activity.");
       } finally {
         setBusy(null);
       }
     },
-    [trip?.id, postCreateSnapshot]
+    [trip?.id, user?.id, replaceModal?.activityId, postCreateSnapshot]
   );
+
+  const openReplaceModal = useCallback(
+    (activityId) => {
+      if (user?.id == null) {
+        navigate("/login", { state: { from: `/trip/${id}` } });
+        return;
+      }
+      setReplaceModal({ activityId });
+    },
+    [user?.id, navigate, id]
+  );
+
+  const handleCopyShareLink = useCallback(async () => {
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareStatus("Link copied to clipboard.");
+    } catch {
+      setShareStatus("Could not copy automatically — copy from the address bar.");
+    }
+    window.setTimeout(() => setShareStatus(""), 3200);
+  }, []);
+
+  const handleVisibilityChange = useCallback(
+    async (nextPublic) => {
+      if (!trip?.id) return;
+      setActionError("");
+      setVisibilityBusy(true);
+      try {
+        const updated = await updatePublicTrip(trip.id, { isPublic: nextPublic });
+        const payload =
+          updated && typeof updated === "object" && updated.id != null
+            ? updated
+            : { ...trip, isPublic: nextPublic };
+        const merged = mergeTripWithPostResponse(payload, postCreateSnapshot);
+        persistTripSnapshot(merged);
+        setTrip(merged);
+      } catch (err) {
+        setActionError(err instanceof Error ? err.message : "Could not update visibility.");
+      } finally {
+        setVisibilityBusy(false);
+      }
+    },
+    [trip, postCreateSnapshot]
+  );
+
+  useEffect(() => {
+    if (!trip) return;
+    const title = formatTripHeroTitle(trip);
+    const prev = document.title;
+    document.title = `${title} · Trip`;
+    return () => {
+      document.title = prev;
+    };
+  }, [trip]);
+
+  useEffect(() => {
+    if (!trip?.id || user?.id == null) {
+      setCanEditVisibility(false);
+      return;
+    }
+    if (isTripOwnerFromPayload(trip, user)) {
+      setCanEditVisibility(true);
+      return;
+    }
+    let cancelled = false;
+    setCanEditVisibility(null);
+    (async () => {
+      try {
+        const list = await fetchMyTrips();
+        const mine = list.some((t) => String(t.id) === String(trip.id));
+        if (!cancelled) setCanEditVisibility(mine);
+      } catch {
+        if (!cancelled) setCanEditVisibility(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [trip, user]);
+
+  useEffect(() => {
+    if (!replaceModal) return;
+    const focusEl = replaceModalFirstFocusRef.current;
+    const raf = window.requestAnimationFrame(() => {
+      focusEl?.focus();
+    });
+    const onKey = (e) => {
+      if (e.key === "Escape") setReplaceModal(null);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [replaceModal]);
 
   useEffect(() => {
     let cancelled = false;
 
     const fetchOnce = async () => {
-      const res = await fetch(apiUrl(`/api/public/trips/${id}`));
+      const res = await fetch(publicTripUrl(id, user?.id));
       const data = await parseResponseJson(res);
       if (!res.ok) {
         return { ok: false, error: friendlyPublicLoadError(res.status, "trip"), trip: null };
@@ -285,14 +448,14 @@ function TripDetails() {
     return () => {
       cancelled = true;
     };
-  }, [id, postCreateSnapshot]);
+  }, [id, postCreateSnapshot, user?.id]);
+
+  useEffect(() => {
+    setLocalRatings({ trip: undefined, activities: {} });
+  }, [id]);
 
   if (loading) {
-    return (
-      <div className="trip-details-loading" role="status" aria-live="polite">
-        <div className="trip-details-loading-inner">Loading your itinerary…</div>
-      </div>
-    );
+    return <TripDetailsSkeleton />;
   }
 
   if (loadError) {
@@ -323,15 +486,28 @@ function TripDetails() {
         <button type="button" className="trip-back-btn" onClick={() => navigate("/")}>
           ← Back
         </button>
+        <div className="trip-details-toolbar-spacer" aria-hidden="true" />
+        <button
+          type="button"
+          className="trip-share-btn"
+          onClick={() => handleCopyShareLink()}
+          disabled={!!busy}
+        >
+          Copy link
+        </button>
         <button
           type="button"
           className="trip-refresh-btn"
           onClick={() => refetchTrip()}
           disabled={refreshing || !!busy}
         >
-          {refreshing ? "Refreshing…" : "Refresh itinerary"}
+          {refreshing ? "Refreshing…" : "Refresh trip"}
         </button>
       </div>
+
+      <p className="trip-share-status" role="status" aria-live="polite" aria-atomic="true">
+        {shareStatus}
+      </p>
 
       {actionError ? (
         <p className="trip-action-error" role="alert">
@@ -361,11 +537,29 @@ function TripDetails() {
                 </span>
               )}
             </div>
+            {canEditVisibility === true ? (
+              <div className="trip-visibility-row">
+                <label className="trip-visibility-label" htmlFor="trip-visibility-input">
+                  <input
+                    id="trip-visibility-input"
+                    type="checkbox"
+                    checked={tripIsPublic}
+                    disabled={visibilityBusy || !!busy}
+                    onChange={(e) => handleVisibilityChange(e.target.checked)}
+                  />
+                  <span>Show on Discover</span>
+                </label>
+                <span className="trip-visibility-hint">
+                  When off, others won’t see this trip on Discover.
+                </span>
+              </div>
+            ) : null}
             <div className="trip-hero-rating">
               {user?.id != null ? (
                 <div className="trip-hero-rating-row">
                   <span className="trip-hero-rating-label">Rate this trip</span>
                   <StarPicker
+                    value={tripStarValue}
                     onPick={handleRateTrip}
                     disabled={!!busy}
                     label="Rate this trip"
@@ -382,12 +576,11 @@ function TripDetails() {
             </div>
           </header>
 
-          <section className="trip-days-section" aria-labelledby="trip-itinerary-heading">
-            <h2 id="trip-itinerary-heading">Itinerary</h2>
+          <section className="trip-days-section" aria-label="Trip plan" id="trip-plan-section">
             {displayDays.length === 0 ? (
-              <p className="trip-itinerary-empty">No itinerary details yet.</p>
+              <p className="trip-itinerary-empty">No details yet.</p>
             ) : (
-              <div className="trip-days-scroll" role="region" aria-label="Daily itinerary">
+              <div className="trip-days-scroll" role="region" aria-label="Daily plan">
                 {displayDays.map((day, index) => {
                   const dayKey = day.id != null ? `day-${day.id}` : `${day.date}-${index}`;
                   const canReorder =
@@ -406,8 +599,20 @@ function TripDetails() {
                           (activity.startTime && activity.startTime !== "—") ||
                           (activity.endTime && activity.endTime !== "—");
                         const stopsBefore =
-                          day.activities?.slice(0, i).reduce((n, a) => n + (a.places?.length ?? 0), 0) ??
-                          0;
+                          day.activities?.slice(0, i).reduce(
+                            (n, a) => n + getActivityPlacesForDisplay(a).length,
+                            0
+                          ) ?? 0;
+                        const displayPlacesList = getActivityPlacesForDisplay(activity);
+                        const prefReason = activity.userPreference?.reason;
+                        const aid = activity.id;
+                        const activityStarValue =
+                          activity.userRating ??
+                          (aid != null ? localRatings.activities[aid] : undefined) ??
+                          (aid != null
+                            ? storedRatings.activities[String(aid)] ??
+                              storedRatings.activities[aid]
+                            : undefined);
                         const actKey =
                           activity.id != null ? `activity-${activity.id}` : `activity-${index}-${i}`;
                         const showAvg =
@@ -453,9 +658,13 @@ function TripDetails() {
                                 <button
                                   type="button"
                                   className="trip-activity-replace-btn"
-                                  onClick={() => handleReplaceActivity(activity.id)}
+                                  onClick={() => openReplaceModal(activity.id)}
                                   disabled={!!busy}
-                                  title="Replace with another place (demo)"
+                                  title={
+                                    user?.id != null
+                                      ? "Swap this stop for another place (saved for you on shared trips)"
+                                      : "Sign in to personalize this stop"
+                                  }
                                 >
                                   Replace stop
                                 </button>
@@ -469,6 +678,7 @@ function TripDetails() {
                                 <div className="trip-activity-rate">
                                   <span className="trip-activity-rate-label">Rate</span>
                                   <StarPicker
+                                    value={activityStarValue}
                                     onPick={(stars) => handleRateActivity(activity.id, stars)}
                                     disabled={!!busy}
                                     label="Rate this stop"
@@ -482,9 +692,15 @@ function TripDetails() {
                               </div>
                             ) : null}
 
-                            {activity.places?.length > 0 ? (
+                            {prefReason && (
+                              <p className="trip-activity-pref-note" role="status">
+                                Your version:{" "}
+                                {REPLACEMENT_REASON_LABELS[prefReason] ?? prefReason}
+                              </p>
+                            )}
+                            {displayPlacesList.length > 0 ? (
                               <ul className="trip-places">
-                                {activity.places.map((place, j) => (
+                                {displayPlacesList.map((place, j) => (
                                   <li key={j}>
                                     <span className="trip-place-index">{stopsBefore + j + 1}.</span>
                                     {place.title}
@@ -508,6 +724,57 @@ function TripDetails() {
 
         <TripRouteMap trip={trip} displayDays={displayDays} />
       </div>
+
+      {replaceModal ? (
+        <div
+          className="trip-replace-modal-backdrop"
+          role="presentation"
+          onClick={() => !busy && setReplaceModal(null)}
+        >
+          <div
+            className="trip-replace-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="trip-replace-modal-title"
+            aria-describedby={replaceModalDescId}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="trip-replace-modal-title" className="trip-replace-modal__title">
+              Why replace this stop?
+            </h2>
+            <p id={replaceModalDescId} className="trip-replace-modal__lead">
+              Your choice is saved only for you — the shared trip stays the same for others.
+            </p>
+            <div className="trip-replace-modal__actions">
+              <button
+                ref={replaceModalFirstFocusRef}
+                type="button"
+                className="trip-replace-modal__choice"
+                disabled={!!busy}
+                onClick={() => handleReplaceReason("WAS_HERE")}
+              >
+                I was here
+              </button>
+              <button
+                type="button"
+                className="trip-replace-modal__choice trip-replace-modal__choice--secondary"
+                disabled={!!busy}
+                onClick={() => handleReplaceReason("DONT_WANT_TO_GO")}
+              >
+                I don’t want to go here
+              </button>
+            </div>
+            <button
+              type="button"
+              className="trip-replace-modal__cancel"
+              disabled={!!busy}
+              onClick={() => setReplaceModal(null)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

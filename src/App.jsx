@@ -9,16 +9,23 @@ import TripDetails from "./pages/TripDetails";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 import Profile from "./pages/Profile";
+import Discover from "./pages/Discover";
+import MyTrips from "./pages/MyTrips";
 
 function App() {
   return (
     <AuthProvider>
       <Router>
+        <a href="#main-content" className="skip-link">
+          Skip to content
+        </a>
         <Navbar />
 
-        <main className="app-main">
+        <main id="main-content" className="app-main" tabIndex={-1}>
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/discover" element={<Discover />} />
+            <Route path="/my-trips" element={<MyTrips />} />
             <Route path="/trip" element={<Trip />} />
             <Route path="/result" element={<Result />} />
             <Route path="/trip/:id" element={<TripDetails />} />

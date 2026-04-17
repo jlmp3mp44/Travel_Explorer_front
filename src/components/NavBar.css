@@ -33,6 +33,8 @@
 .nav-left {
   display: flex;
   align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 /* RIGHT */
@@ -56,6 +58,42 @@
 .home-btn:hover {
   background: white;
   color: #6a5acd;
+}
+
+.discover-btn {
+  background: rgba(255, 255, 255, 0.18);
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.discover-btn:hover {
+  background: rgba(255, 255, 255, 0.32);
+  transform: translateY(-1px);
+}
+
+.my-trips-btn {
+  background: rgba(255, 255, 255, 0.12);
+  border: 2px solid rgba(255, 255, 255, 0.75);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.my-trips-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+  transform: translateY(-1px);
 }
 
 .profile-btn {

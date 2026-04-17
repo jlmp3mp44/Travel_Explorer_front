@@ -33,6 +33,15 @@ function pickNumericId(v) {
   return Number.isFinite(n) ? n : undefined;
 }
 
+function normalizeUserPreference(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const reason = raw.reason ?? raw.changeReason;
+  if (reason !== "WAS_HERE" && reason !== "DONT_WANT_TO_GO") return null;
+  const rpRaw = raw.replacementPlaces ?? raw.replacement_places ?? [];
+  const replacementPlaces = coercePlacesArray(rpRaw).map(normalizePlace).filter(Boolean);
+  return { reason, replacementPlaces };
+}
+
 function normalizeActivity(act) {
   if (!act) return null;
   const id = pickNumericId(act.id);
@@ -45,25 +54,71 @@ function normalizeActivity(act) {
   const placesRaw = coercePlacesArray(
     act.places ?? act.placeList ?? act.place_list ?? act.locations ?? act.venueList ?? act.stopovers ?? act.place
   );
-  const places = placesRaw.map(normalizePlace).filter(Boolean);
+  let places = placesRaw.map(normalizePlace).filter(Boolean);
+  const userPreference = normalizeUserPreference(act.userPreference);
+  const userRatingStars =
+    act.userRating != null ||
+    act.userStars != null ||
+    act.myRating != null ||
+    act.myStars != null
+      ? (() => {
+          const raw =
+            act.userRating ?? act.userStars ?? act.myRating ?? act.myStars ?? act.userActivityRating;
+          if (typeof raw === "number" && raw >= 1 && raw <= 5) return raw;
+          if (raw && typeof raw === "object" && raw.stars != null) {
+            const n = Number(raw.stars);
+            return Number.isFinite(n) && n >= 1 && n <= 5 ? n : undefined;
+          }
+          return undefined;
+        })()
+      : undefined;
 
   const meta = {
     id,
     sortOrder: Number.isFinite(sortOrder) ? sortOrder : undefined,
     averageRating: Number.isFinite(averageRating) ? averageRating : undefined,
     ratingCount: Number.isFinite(ratingCount) ? ratingCount : undefined,
+    ...(userRatingStars != null ? { userRating: userRatingStars } : {}),
   };
 
   /* Activity-level title if no nested places (some APIs flatten this) */
   if (places.length === 0) {
     const flat = act.title ?? act.placeName ?? act.name ?? act.label;
     if (flat != null && String(flat).trim() !== "") {
-      return { ...meta, startTime, endTime, places: [{ title: String(flat) }] };
+      places = [{ title: String(flat) }];
     }
   }
 
-  return { ...meta, startTime, endTime, places };
+  const displayPlaces =
+    userPreference && userPreference.replacementPlaces.length > 0
+      ? userPreference.replacementPlaces
+      : places;
+
+  return {
+    ...meta,
+    startTime,
+    endTime,
+    places,
+    displayPlaces,
+    ...(userPreference ? { userPreference } : {}),
+  };
 }
+
+/**
+ * Places to show for maps and itinerary: replacement when the user chose one, else canonical `places`.
+ */
+export function getActivityPlacesForDisplay(activity) {
+  if (!activity) return [];
+  if (Array.isArray(activity.displayPlaces) && activity.displayPlaces.length > 0) {
+    return activity.displayPlaces;
+  }
+  return activity.places ?? [];
+}
+
+export const REPLACEMENT_REASON_LABELS = {
+  WAS_HERE: "I was here",
+  DONT_WANT_TO_GO: "I don’t want to go here",
+};
 
 /** Show time as HH:mm when value looks like ISO or has T */
 function formatTimeSlot(v) {

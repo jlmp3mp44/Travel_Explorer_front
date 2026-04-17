@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { apiUrl } from "../config/api";
+import AuthPasswordField from "../components/AuthPasswordField";
 import {
   friendlyLoginError,
   friendlyNetworkError,
@@ -22,6 +23,15 @@ function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    const user = usernameInput.trim();
+    if (!user) {
+      setError("Enter your username.");
+      return;
+    }
+    if (!password) {
+      setError("Enter your password.");
+      return;
+    }
     setLoading(true);
 
     try {
@@ -30,7 +40,7 @@ function Login() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          username: usernameInput.trim(),
+          username: user,
           password,
         }),
       });
@@ -74,17 +84,14 @@ function Login() {
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="login-password">Password</label>
-            <input
-              id="login-password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
+          <AuthPasswordField
+            id="login-password"
+            label="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            required
+          />
 
           {error ? (
             <div className="auth-alert auth-alert--error" role="alert">

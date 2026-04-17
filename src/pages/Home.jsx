@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { apiUrl } from "../config/api";
 import { friendlyNetworkError, parseResponseJson } from "../utils/friendlyErrors";
+import TripListSkeleton from "../components/skeletons/TripListSkeleton";
 import "../components/Home.css";
 
 const BENEFITS = [
@@ -100,7 +101,7 @@ function Home() {
           </p>
           <div className="home-trips-scroll">
             {loading ? (
-              <p className="home-trips-status">Loading trips…</p>
+              <TripListSkeleton count={6} variant="home" />
             ) : loadError ? (
               <p className="home-inline-error" role="alert">
                 {loadError}

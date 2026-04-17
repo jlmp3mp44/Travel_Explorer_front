@@ -28,25 +28,67 @@ export async function parseResponseJson(response) {
   }
 }
 
+/**
+ * Maps common auth API responses to short, actionable copy.
+ */
 export function friendlyLoginError(status, data) {
-  const raw = typeof data?.message === "string" ? data.message : "";
-  const lower = raw.toLowerCase();
-  if (lower.includes("bad credential") || lower.includes("invalid credential") || status === 401) {
-    return "Incorrect username or password. Please try again.";
-  }
-  if (status === 404 && (lower.includes("credential") || lower.includes("user") || !raw)) {
-    return "Incorrect username or password. Please try again.";
-  }
-  if (status === 403) {
-    return "Access denied. Please contact support if this continues.";
-  }
+  const raw = typeof data?.message === "string" ? data.message.trim() : "";
+  const spring = pickSpringErrorMessage(data);
+  const combined = (spring || raw).trim();
+  const lower = combined.toLowerCase();
+
   if (status >= 500) {
     return "The server is busy right now. Please try again in a moment.";
   }
-  if (raw && raw.length < 200 && !looksLikeTechnicalError(raw)) {
-    return raw;
+
+  if (combined && combined.length > 0 && combined.length < 220 && !looksLikeTechnicalError(combined)) {
+    const mapped = mapKnownLoginPhrases(lower);
+    if (mapped) return mapped;
   }
-  return "Something went wrong while signing in. Please try again.";
+
+  if (status === 401 || status === 403) {
+    if (!combined) {
+      return "Incorrect username or password. Check for typos and that Caps Lock is off, then try again.";
+    }
+    if (status === 403) {
+      return "Your account can’t sign in right now. If this surprises you, contact support.";
+    }
+    return "Incorrect username or password. Check for typos and that Caps Lock is off, then try again.";
+  }
+
+  if (status === 404) {
+    if (lower.includes("user") || lower.includes("credential") || !combined) {
+      return "Incorrect username or password. Check for typos and that Caps Lock is off, then try again.";
+    }
+  }
+
+  if (combined && combined.length < 220 && !looksLikeTechnicalError(combined)) {
+    return combined;
+  }
+  return "We couldn’t sign you in. Check your username and password, then try again.";
+}
+
+function mapKnownLoginPhrases(lower) {
+  if (
+    lower.includes("bad credential") ||
+    lower.includes("invalid credential") ||
+    lower.includes("invalid username or password")
+  ) {
+    return "Incorrect username or password. Check for typos and that Caps Lock is off, then try again.";
+  }
+  if (lower.includes("disabled") || lower.includes("deactivated")) {
+    return "This account is disabled. Contact support if you need help.";
+  }
+  if (lower.includes("locked") || lower.includes("too many")) {
+    return "Too many sign-in attempts or this account is locked. Wait a bit or reset your password, then try again.";
+  }
+  if (lower.includes("user not found") || lower.includes("unknown user")) {
+    return "No account uses that username. Create one or check the spelling.";
+  }
+  if (lower.includes("expired")) {
+    return "Your session or link expired. Try signing in again.";
+  }
+  return null;
 }
 
 export function friendlyRegisterError(status, data) {

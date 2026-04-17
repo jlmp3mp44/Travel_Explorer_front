@@ -63,6 +63,8 @@ function Trip() {
   const [selectedInterests, setSelectedInterests] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  /** Shown in Discover when true; default matches backend default. */
+  const [isPublic, setIsPublic] = useState(true);
 
   const [placeCategories, setPlaceCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
@@ -319,6 +321,7 @@ function Trip() {
       budget: parseInt(budget, 10),
       /** Backend DTO uses `categories` (e.g. ["museum"]), not only hobbies/interestIds */
       categories: categoryCodes,
+      isPublic,
       ...(cityName ? { city: cityName } : {}),
       ...(currency ? { currency } : {}),
       hobbies: selectedInterests.map((s) => s.label),
@@ -665,6 +668,14 @@ function Trip() {
             )}
 
             {error && <p className="error trip-interests-error">{error}</p>}
+            <label className="trip-public-toggle">
+              <input
+                type="checkbox"
+                checked={isPublic}
+                onChange={(e) => setIsPublic(e.target.checked)}
+              />
+              <span>Include this trip on Discover so others can view it.</span>
+            </label>
             <div className="trip-interests-actions form-actions">
               <button type="button" className="btn-secondary" onClick={goBack}>
                 Back

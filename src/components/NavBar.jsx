@@ -21,12 +21,18 @@ function Navbar() {
         <button className="home-btn" onClick={() => navigate("/")}>
           🏠 Home
         </button>
+        <button type="button" className="discover-btn" onClick={() => navigate("/discover")}>
+          Discover
+        </button>
       </div>
 
       {/* 🔹 RIGHT SIDE */}
       <div className="nav-right">
         {loading ? null : username ? (
           <>
+            <button type="button" className="my-trips-btn" onClick={() => navigate("/my-trips")}>
+              My trips
+            </button>
             <button type="button" className="profile-btn" onClick={() => navigate("/profile")}>
               Profile
             </button>

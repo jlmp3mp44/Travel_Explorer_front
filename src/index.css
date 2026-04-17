@@ -70,12 +70,35 @@ body {
   background-attachment: fixed;
 }
 
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 10000;
+  padding: 12px 20px;
+  background: #fff;
+  color: var(--text-h, #1a1a2e);
+  font-weight: 700;
+  border-radius: 0 0 10px 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.skip-link:focus {
+  left: 12px;
+  outline: 3px solid rgba(102, 126, 234, 0.65);
+  outline-offset: 2px;
+}
+
 .app-main {
   flex: 1 1 auto;
   width: 100%;
   min-width: 0;
   display: flex;
   flex-direction: column;
+}
+
+.app-main:focus {
+  outline: none;
 }
 
 #root {

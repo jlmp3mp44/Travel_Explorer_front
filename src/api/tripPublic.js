@@ -1,5 +1,6 @@
 import { apiUrl } from "../config/api";
 import { parseResponseJson } from "../utils/friendlyErrors";
+import { unwrapTripPayload } from "../utils/tripItinerary";
 
 function errorMessageFromBody(data, fallback) {
   const raw = typeof data?.message === "string" ? data.message : "";
@@ -28,21 +29,67 @@ export async function reorderDayActivities(tripId, dayId, activityIds) {
   return data;
 }
 
+/** GET single trip; optional `userId` loads per-user activity preferences on the response. */
+export function publicTripUrl(tripId, userId) {
+  let url = apiUrl(`/api/public/trips/${encodeURIComponent(tripId)}`);
+  if (userId != null && userId !== "") {
+    url += `${url.includes("?") ? "&" : "?"}userId=${encodeURIComponent(String(userId))}`;
+  }
+  return url;
+}
+
 /**
- * POST — returns full trip (same shape as GET by id).
+ * POST — body: { userId, reason: "WAS_HERE" | "DONT_WANT_TO_GO" } — returns full trip (same shape as GET by id).
  */
-export async function replaceActivity(tripId, activityId) {
+export async function replaceActivity(tripId, activityId, { userId, reason }) {
   const res = await fetch(
     apiUrl(
       `/api/public/trips/${encodeURIComponent(tripId)}/activities/${encodeURIComponent(activityId)}/replace`
     ),
-    { method: "POST" }
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, reason }),
+    }
   );
   const data = await parseResponseJson(res);
   if (!res.ok) {
     throw new Error(errorMessageFromBody(data, "Could not replace this activity."));
   }
   return data;
+}
+
+/**
+ * PUT — partial update (e.g. `{ isPublic: true }`). Sends session cookies when present.
+ */
+export async function updatePublicTrip(tripId, patch) {
+  const res = await fetch(apiUrl(`/api/public/trips/${encodeURIComponent(tripId)}`), {
+    method: "PUT",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  });
+  const data = await parseResponseJson(res);
+  if (!res.ok) {
+    throw new Error(errorMessageFromBody(data, "Could not update this trip."));
+  }
+  return unwrapTripPayload(data);
+}
+
+/**
+ * Lists trips for the current user. Expects `{ content: [...] }` or a plain array.
+ */
+export async function fetchMyTrips() {
+  const res = await fetch(apiUrl("/api/user/trips?pageNumber=0&pageSize=100"), {
+    credentials: "include",
+  });
+  const data = await parseResponseJson(res);
+  if (!res.ok) {
+    throw new Error(errorMessageFromBody(data, "Could not load your trips."));
+  }
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.content)) return data.content;
+  return [];
 }
 
 /**

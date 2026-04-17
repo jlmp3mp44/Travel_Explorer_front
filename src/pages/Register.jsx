@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { apiUrl } from "../config/api";
+import AuthPasswordField from "../components/AuthPasswordField";
 import {
   friendlyNetworkError,
   friendlyRegisterError,
@@ -13,6 +14,7 @@ function Register() {
 
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
@@ -40,6 +42,7 @@ function Register() {
           username,
           email,
           password,
+          phoneNumber: phoneNumber.trim() || undefined,
           roles: [],
         }),
       });
@@ -64,7 +67,7 @@ function Register() {
     <div className="auth-page">
       <div className="auth-card">
         <h1 className="auth-title">Create an account</h1>
-        <p className="auth-lead">Choose a username, email, and a strong password.</p>
+        <p className="auth-lead">Choose a username, email, phone, and a strong password.</p>
 
         <form className="auth-form" onSubmit={handleRegister} noValidate>
           <div className="form-group">
@@ -94,34 +97,41 @@ function Register() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="register-password">Password</label>
+            <label htmlFor="register-phone">Phone number</label>
             <input
-              id="register-password"
-              type="password"
-              name="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
-              maxLength={126}
+              id="register-phone"
+              type="tel"
+              autoComplete="tel"
+              inputMode="tel"
+              placeholder="+1 234 567 8900"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="register-confirm">Confirm password</label>
-            <input
-              id="register-confirm"
-              type="password"
-              name="confirmPassword"
-              autoComplete="new-password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              minLength={8}
-              maxLength={126}
-            />
-          </div>
+          <AuthPasswordField
+            id="register-password"
+            name="password"
+            label="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
+            required
+            minLength={8}
+            maxLength={126}
+          />
+
+          <AuthPasswordField
+            id="register-confirm"
+            name="confirmPassword"
+            label="Confirm password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            autoComplete="new-password"
+            required
+            minLength={8}
+            maxLength={126}
+          />
 
           {error ? (
             <div className="auth-alert auth-alert--error" role="alert">
