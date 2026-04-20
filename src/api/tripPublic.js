@@ -77,10 +77,17 @@ export async function updatePublicTrip(tripId, patch) {
 }
 
 /**
- * Lists trips for the current user. Expects `{ content: [...] }` or a plain array.
+ * Lists trips for an owner. When `ownerUserId` is the signed-in user (JWT cookie + credentials),
+ * the API returns public and private trips; otherwise only public trips for that owner.
+ * Expects `{ content: [...] }` or a plain array.
  */
-export async function fetchMyTrips() {
-  const res = await fetch(apiUrl("/api/user/trips?pageNumber=0&pageSize=100"), {
+export async function fetchMyTrips(ownerUserId) {
+  const params = new URLSearchParams({
+    userId: String(ownerUserId),
+    pageNumber: "0",
+    pageSize: "100",
+  });
+  const res = await fetch(apiUrl(`/api/public/trips?${params}`), {
     credentials: "include",
   });
   const data = await parseResponseJson(res);

@@ -29,10 +29,11 @@ function MyTrips() {
   }, [authLoading, user, navigate]);
 
   const load = useCallback(async () => {
+    if (user?.id == null) return;
     setLoading(true);
     setError("");
     try {
-      const list = await fetchMyTrips();
+      const list = await fetchMyTrips(user.id);
       setTrips(Array.isArray(list) ? list : []);
     } catch (e) {
       setError(e instanceof Error ? e.message : friendlyNetworkError(e));
@@ -40,7 +41,7 @@ function MyTrips() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     if (authLoading || !user) return;

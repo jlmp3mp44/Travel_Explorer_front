@@ -385,7 +385,7 @@ function TripDetails() {
     setCanEditVisibility(null);
     (async () => {
       try {
-        const list = await fetchMyTrips();
+        const list = await fetchMyTrips(user.id);
         const mine = list.some((t) => String(t.id) === String(trip.id));
         if (!cancelled) setCanEditVisibility(mine);
       } catch {
