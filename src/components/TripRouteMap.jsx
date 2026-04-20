@@ -61,6 +61,7 @@ export default function TripRouteMap({ trip, displayDays }) {
 
   useEffect(() => {
     if (!GOOGLE_MAPS_API_KEY?.trim()) return;
+    if (import.meta.env.VITE_DISABLE_GOOGLE_API === "true") return;
 
     const el = containerRef.current;
     if (!el) return;
@@ -189,10 +190,14 @@ export default function TripRouteMap({ trip, displayDays }) {
     };
   }, [trip, displayDays]);
 
-  if (!GOOGLE_MAPS_API_KEY?.trim()) {
+  if (!GOOGLE_MAPS_API_KEY?.trim() || import.meta.env.VITE_DISABLE_GOOGLE_API === "true") {
     return (
       <aside className="trip-map-aside trip-map-aside--error" aria-live="polite">
-        <p className="trip-map-error-msg">Configure VITE_GOOGLE_MAPS_API_KEY to show the map.</p>
+        <p className="trip-map-error-msg">
+          {import.meta.env.VITE_DISABLE_GOOGLE_API === "true"
+            ? "Google Maps API is temporarily disabled."
+            : "Configure VITE_GOOGLE_MAPS_API_KEY to show the map."}
+        </p>
       </aside>
     );
   }
