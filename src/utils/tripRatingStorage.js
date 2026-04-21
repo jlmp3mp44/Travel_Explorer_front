@@ -43,3 +43,22 @@ export function persistUserTripRating(userId, tripId, patch) {
     /* ignore quota */
   }
 }
+
+/** Remove one activity’s stars (e.g. after replace/delete when the slot is semantically new). */
+export function removePersistedActivityRating(userId, tripId, activityId) {
+  if (typeof window === "undefined" || userId == null || tripId == null || activityId == null) {
+    return;
+  }
+  try {
+    const prev = readStoredUserRatings(userId, tripId);
+    const activities = { ...prev.activities };
+    delete activities[String(activityId)];
+    delete activities[activityId];
+    window.localStorage.setItem(
+      key(userId, tripId),
+      JSON.stringify({ trip: prev.trip, activities })
+    );
+  } catch {
+    /* ignore */
+  }
+}

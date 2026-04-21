@@ -126,6 +126,78 @@
   cursor: pointer;
 }
 
+.my-trips-row-delete {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(180, 50, 60, 0.45);
+  background: rgba(255, 250, 250, 0.95);
+  color: #8b2330;
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.my-trips-row-delete:hover:not(:disabled) {
+  background: rgba(180, 50, 60, 0.09);
+  border-color: rgba(160, 40, 55, 0.65);
+}
+
+.my-trips-row-delete:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.my-trips-delete-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  flex: 1 1 100%;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+.my-trips-delete-inline__ask {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #6b1d28;
+  margin-right: auto;
+}
+
+.my-trips-delete-inline__btn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid var(--border, #e2e2e8);
+  background: var(--surface-glass, #fff);
+  color: var(--text-h, #1a1a2e);
+}
+
+.my-trips-delete-inline__btn--cancel:hover:not(:disabled) {
+  border-color: rgba(102, 126, 234, 0.45);
+}
+
+.my-trips-delete-inline__btn--danger {
+  border-color: rgba(180, 50, 60, 0.55);
+  background: rgba(180, 50, 60, 0.1);
+  color: #8b2330;
+}
+
+.my-trips-delete-inline__btn--danger:hover:not(:disabled) {
+  background: rgba(180, 50, 60, 0.18);
+}
+
+.my-trips-delete-inline__btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;

@@ -11,6 +11,7 @@ import Login from "./pages/Login";
 import Profile from "./pages/Profile";
 import Discover from "./pages/Discover";
 import MyTrips from "./pages/MyTrips";
+import TripDeletedFlashBanner from "./components/TripDeletedFlashBanner";
 
 function App() {
   return (
@@ -22,6 +23,9 @@ function App() {
         <Navbar />
 
         <main id="main-content" className="app-main" tabIndex={-1}>
+          <div className="trip-deleted-flash-host">
+            <TripDeletedFlashBanner />
+          </div>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/discover" element={<Discover />} />

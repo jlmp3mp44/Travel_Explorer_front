@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { fetchMyTrips, updatePublicTrip } from "../api/tripPublic";
+import { deletePublicTrip, fetchMyTrips, updatePublicTrip } from "../api/tripPublic";
 import { friendlyNetworkError } from "../utils/friendlyErrors";
 import TripListSkeleton from "../components/skeletons/TripListSkeleton";
 import "../components/Home.css";
@@ -20,6 +20,7 @@ function MyTrips() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -47,6 +48,29 @@ function MyTrips() {
     if (authLoading || !user) return;
     load();
   }, [authLoading, user, load]);
+
+  const handleDeleteTrip = async (trip) => {
+    if (trip?.id == null) return;
+    setBusyId(trip.id);
+    setError("");
+    try {
+      await deletePublicTrip(trip.id);
+      if (typeof window !== "undefined") {
+        try {
+          window.localStorage.removeItem(`tripSnapshot:${trip.id}`);
+        } catch {
+          /* ignore */
+        }
+      }
+      setTrips((prev) => prev.filter((t) => String(t.id) !== String(trip.id)));
+      setDeleteConfirmId(null);
+      navigate(".", { replace: true, state: { tripDeleted: true } });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not delete this trip.");
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const togglePublic = async (trip, next) => {
     if (trip?.id == null) return;
@@ -120,15 +144,56 @@ function MyTrips() {
                       {trip.startDate} – {trip.endDate}
                     </span>
                   </button>
-                  <label className="my-trips-visibility">
-                    <input
-                      type="checkbox"
-                      checked={pub}
-                      disabled={busy}
-                      onChange={(e) => togglePublic(trip, e.target.checked)}
-                    />
-                    <span>On Discover</span>
-                  </label>
+                  {deleteConfirmId === trip.id ? (
+                    <div className="my-trips-delete-inline" role="group" aria-label="Confirm delete trip">
+                      <span className="my-trips-delete-inline__ask">Delete this whole trip?</span>
+                      <button
+                        type="button"
+                        className="my-trips-delete-inline__btn my-trips-delete-inline__btn--cancel"
+                        disabled={busy}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteConfirmId(null);
+                        }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className="my-trips-delete-inline__btn my-trips-delete-inline__btn--danger"
+                        disabled={busy}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleDeleteTrip(trip);
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <label className="my-trips-visibility">
+                        <input
+                          type="checkbox"
+                          checked={pub}
+                          disabled={busy}
+                          onChange={(e) => togglePublic(trip, e.target.checked)}
+                        />
+                        <span>On Discover</span>
+                      </label>
+                      <button
+                        type="button"
+                        className="my-trips-row-delete"
+                        disabled={busy}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteConfirmId(trip.id);
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
                 </li>
               );
             })}

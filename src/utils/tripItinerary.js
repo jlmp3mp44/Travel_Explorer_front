@@ -232,6 +232,34 @@ export function mergeTripWithPostResponse(getTrip, postTrip) {
   return getTrip;
 }
 
+/**
+ * Clears per-user activity rating fields on the matching activity id (raw API shape).
+ * Used after replace so the UI does not keep stars tied to the previous stop when ids are reused.
+ */
+export function stripActivityUserRatingForId(trip, activityId) {
+  if (!trip || typeof trip !== "object" || activityId == null) return trip;
+  const idStr = String(activityId);
+  const rawDays = trip.days;
+  if (!Array.isArray(rawDays)) return trip;
+  const days = rawDays.map((day) => {
+    if (!day || typeof day !== "object") return day;
+    const acts = day.activities ?? day.activityList;
+    if (!Array.isArray(acts)) return day;
+    const activities = acts.map((a) => {
+      if (!a || typeof a !== "object" || String(a.id) !== idStr) return a;
+      const next = { ...a };
+      delete next.userRating;
+      delete next.userStars;
+      delete next.myRating;
+      delete next.myStars;
+      delete next.userActivityRating;
+      return next;
+    });
+    return { ...day, activities };
+  });
+  return { ...trip, days };
+}
+
 /** Trip title as returned by the API (may be numeric — backend-generated). */
 export function formatTripHeroTitle(trip) {
   if (!trip) return "Trip";

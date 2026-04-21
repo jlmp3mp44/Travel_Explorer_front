@@ -1,6 +1,9 @@
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
+  addDayActivity,
+  deletePublicTrip,
+  deleteTripActivity,
   fetchMyTrips,
   postActivityRating,
   postTripRating,
@@ -18,14 +21,18 @@ import {
   formatTripHeroTitle,
   getActivityPlacesForDisplay,
   mergeTripWithPostResponse,
-  REPLACEMENT_REASON_LABELS,
   resolveTripDaysForDisplay,
+  stripActivityUserRatingForId,
   unwrapTripPayload,
 } from "../utils/tripItinerary";
 import { useAuth } from "../context/AuthContext";
 import { isTripOwnerFromPayload } from "../utils/tripOwnership";
 import { extractTripUserRating } from "../utils/ratings";
-import { persistUserTripRating, readStoredUserRatings } from "../utils/tripRatingStorage";
+import {
+  persistUserTripRating,
+  readStoredUserRatings,
+  removePersistedActivityRating,
+} from "../utils/tripRatingStorage";
 import TripRouteMap from "../components/TripRouteMap";
 import TripDetailsSkeleton from "../components/skeletons/TripDetailsSkeleton";
 import "../components/TripDetails.css";
@@ -46,6 +53,30 @@ function moveItem(arr, from, to) {
 
 function activityDndKey(dayId, index) {
   return `${dayId}-${index}`;
+}
+
+function ActivityTrashIcon() {
+  return (
+    <svg
+      className="trip-activity-sq__icon"
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M3 6h18" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <line x1="10" y1="11" x2="10" y2="17" />
+      <line x1="14" y1="11" x2="14" y2="17" />
+    </svg>
+  );
 }
 
 function StarPicker({ value, onPick, disabled, label = "Rate" }) {
@@ -123,7 +154,7 @@ function TripDetails() {
   const [busy, setBusy] = useState(null);
   const [dndDraggingKey, setDndDraggingKey] = useState(null);
   const [dndDropTargetKey, setDndDropTargetKey] = useState(null);
-  /** `{ activityId }` while choosing replace reason */
+  /** `{ activityId, mode?: 'replace' | 'delete' }` while choosing reason for replace or delete */
   const [replaceModal, setReplaceModal] = useState(null);
   const replaceModalDescId = useId();
   const replaceModalFirstFocusRef = useRef(null);
@@ -132,11 +163,65 @@ function TripDetails() {
   const [shareStatus, setShareStatus] = useState("");
   /** Fallback when API omits user rating on GET */
   const [localRatings, setLocalRatings] = useState({ trip: undefined, activities: {} });
+  /** Bumps when persisted activity ratings are removed so `storedRatings` re-reads localStorage. */
+  const [ratingStorageRev, setRatingStorageRev] = useState(0);
+  /** Inline two-step delete (no blocking browser dialog). */
+  const [wholeTripDeleteConfirm, setWholeTripDeleteConfirm] = useState(false);
 
   const displayDays = useMemo(() => {
     if (!trip) return [];
     return resolveTripDaysForDisplay(trip).days;
   }, [trip]);
+
+  /**
+   * Map geocoding is expensive; `TripRouteMap` only reloads when this snapshot changes.
+   * Edits keep the live `trip` in sync; user clicks "Update map" to copy `trip` here.
+   */
+  const [tripSnapshotForMap, setTripSnapshotForMap] = useState(null);
+
+  useEffect(() => {
+    setTripSnapshotForMap(null);
+  }, [id]);
+
+  useEffect(() => {
+    if (trip && String(trip.id) === String(id)) {
+      setTripSnapshotForMap((prev) => (prev == null ? trip : prev));
+    }
+  }, [trip, id]);
+
+  const mapDisplayDays = useMemo(() => {
+    const t = tripSnapshotForMap;
+    if (!t) return [];
+    return resolveTripDaysForDisplay(t).days;
+  }, [tripSnapshotForMap]);
+
+  const handleUpdateRouteMap = useCallback(() => {
+    if (trip && String(trip.id) === String(id)) {
+      setTripSnapshotForMap(trip);
+    }
+  }, [trip, id]);
+
+  const performDeleteTrip = useCallback(async () => {
+    if (!trip?.id) return;
+    setActionError("");
+    setBusy("delete-trip");
+    setWholeTripDeleteConfirm(false);
+    try {
+      await deletePublicTrip(trip.id);
+      if (typeof window !== "undefined") {
+        try {
+          window.localStorage.removeItem(`tripSnapshot:${trip.id}`);
+        } catch {
+          /* ignore */
+        }
+      }
+      navigate("/", { replace: true, state: { tripDeleted: true } });
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not delete this trip.");
+    } finally {
+      setBusy(null);
+    }
+  }, [trip?.id, navigate]);
 
   const heroTitle = useMemo(() => formatTripHeroTitle(trip), [trip]);
 
@@ -144,7 +229,7 @@ function TripDetails() {
   const storedRatings = useMemo(() => {
     if (!trip?.id || user?.id == null) return { trip: undefined, activities: {} };
     return readStoredUserRatings(user.id, trip.id);
-  }, [trip?.id, user?.id]);
+  }, [trip?.id, user?.id, ratingStorageRev]);
 
   const tripStarValue = useMemo(() => {
     if (!trip) return undefined;
@@ -160,6 +245,8 @@ function TripDetails() {
     if (v === false) return false;
     return true;
   }, [trip]);
+
+  const isTripOwner = useMemo(() => isTripOwnerFromPayload(trip, user), [trip, user]);
 
   const refetchTrip = useCallback(async () => {
     if (!id) return;
@@ -292,28 +379,66 @@ function TripDetails() {
     [handleActivityDragEnd, handleReorderDay]
   );
 
-  const handleReplaceReason = useCallback(
+  const handleReplaceOrDeleteReason = useCallback(
     async (reason) => {
       if (!trip?.id || user?.id == null || !replaceModal?.activityId) return;
       const activityId = replaceModal.activityId;
+      const mode = replaceModal.mode ?? "replace";
       setActionError("");
-      setBusy(`replace:${activityId}`);
+      setBusy(mode === "delete" ? `del:${activityId}` : `replace:${activityId}`);
       try {
-        const data = await replaceActivity(trip.id, activityId, {
-          userId: user.id,
-          reason,
-        });
-        const merged = mergeTripWithPostResponse(unwrapTripPayload(data), postCreateSnapshot);
-        persistTripSnapshot(merged);
-        setTrip(merged);
+        if (mode === "delete") {
+          const updated = await deleteTripActivity(trip.id, activityId, {
+            userId: user.id,
+            reason,
+          });
+          removePersistedActivityRating(user.id, trip.id, activityId);
+          setRatingStorageRev((n) => n + 1);
+          setLocalRatings((prev) => {
+            const activities = { ...prev.activities };
+            delete activities[activityId];
+            delete activities[String(activityId)];
+            return { ...prev, activities };
+          });
+          if (updated?.id) {
+            const merged = mergeTripWithPostResponse(updated, postCreateSnapshot);
+            persistTripSnapshot(merged);
+            setTrip(merged);
+          } else {
+            await refetchTrip();
+          }
+        } else {
+          const data = await replaceActivity(trip.id, activityId, {
+            userId: user.id,
+            reason,
+          });
+          removePersistedActivityRating(user.id, trip.id, activityId);
+          setRatingStorageRev((n) => n + 1);
+          setLocalRatings((prev) => {
+            const activities = { ...prev.activities };
+            delete activities[activityId];
+            delete activities[String(activityId)];
+            return { ...prev, activities };
+          });
+          const merged = mergeTripWithPostResponse(unwrapTripPayload(data), postCreateSnapshot);
+          const cleared = stripActivityUserRatingForId(merged, activityId);
+          persistTripSnapshot(cleared);
+          setTrip(cleared);
+        }
         setReplaceModal(null);
       } catch (err) {
-        setActionError(err instanceof Error ? err.message : "Could not replace activity.");
+        setActionError(
+          err instanceof Error
+            ? err.message
+            : mode === "delete"
+              ? "Could not remove this stop."
+              : "Could not replace activity."
+        );
       } finally {
         setBusy(null);
       }
     },
-    [trip?.id, user?.id, replaceModal?.activityId, postCreateSnapshot]
+    [trip?.id, user?.id, replaceModal?.activityId, replaceModal?.mode, postCreateSnapshot, refetchTrip]
   );
 
   const openReplaceModal = useCallback(
@@ -322,9 +447,43 @@ function TripDetails() {
         navigate("/login", { state: { from: `/trip/${id}` } });
         return;
       }
-      setReplaceModal({ activityId });
+      setReplaceModal({ activityId, mode: "replace" });
     },
     [user?.id, navigate, id]
+  );
+
+  const openDeleteActivityModal = useCallback(
+    (activityId) => {
+      if (user?.id == null) {
+        navigate("/login", { state: { from: `/trip/${id}` } });
+        return;
+      }
+      setReplaceModal({ activityId, mode: "delete" });
+    },
+    [user?.id, navigate, id]
+  );
+
+  const handleAddDayActivity = useCallback(
+    async (dayId) => {
+      if (!trip?.id || dayId == null) return;
+      setActionError("");
+      setBusy(`add:${dayId}`);
+      try {
+        const updated = await addDayActivity(trip.id, dayId);
+        if (updated?.id) {
+          const merged = mergeTripWithPostResponse(updated, postCreateSnapshot);
+          persistTripSnapshot(merged);
+          setTrip(merged);
+        } else {
+          await refetchTrip();
+        }
+      } catch (err) {
+        setActionError(err instanceof Error ? err.message : "Could not add a stop.");
+      } finally {
+        setBusy(null);
+      }
+    },
+    [trip?.id, postCreateSnapshot, refetchTrip]
   );
 
   const handleCopyShareLink = useCallback(async () => {
@@ -454,6 +613,10 @@ function TripDetails() {
     setLocalRatings({ trip: undefined, activities: {} });
   }, [id]);
 
+  useEffect(() => {
+    setWholeTripDeleteConfirm(false);
+  }, [id]);
+
   if (loading) {
     return <TripDetailsSkeleton />;
   }
@@ -503,7 +666,33 @@ function TripDetails() {
         >
           {refreshing ? "Refreshing…" : "Refresh trip"}
         </button>
+        {isTripOwner ? (
+          <button
+            type="button"
+            className="trip-toolbar-delete-trip-btn"
+            onClick={() =>
+              wholeTripDeleteConfirm ? performDeleteTrip() : setWholeTripDeleteConfirm(true)
+            }
+            disabled={!!busy}
+            title="Permanently remove this trip (all days and stops)"
+          >
+            {wholeTripDeleteConfirm ? "Click again to delete" : "Delete entire trip"}
+          </button>
+        ) : null}
       </div>
+
+      {isTripOwner && wholeTripDeleteConfirm ? (
+        <p className="trip-delete-whole-hint" role="status">
+          This removes the whole trip for everyone.&nbsp;
+          <button
+            type="button"
+            className="trip-delete-whole-hint__cancel"
+            onClick={() => setWholeTripDeleteConfirm(false)}
+          >
+            Cancel
+          </button>
+        </p>
+      ) : null}
 
       <p className="trip-share-status" role="status" aria-live="polite" aria-atomic="true">
         {shareStatus}
@@ -583,28 +772,41 @@ function TripDetails() {
               <div className="trip-days-scroll" role="region" aria-label="Daily plan">
                 {displayDays.map((day, index) => {
                   const dayKey = day.id != null ? `day-${day.id}` : `${day.date}-${index}`;
+                  const dayActivities = day.activities ?? [];
                   const canReorder =
                     day.id != null &&
-                    (day.activities ?? []).length > 1 &&
-                    (day.activities ?? []).every((a) => a.id != null);
+                    dayActivities.length > 1 &&
+                    dayActivities.every((a) => a.id != null);
+
                   return (
                     <article key={dayKey} className="trip-day-card">
                       <div className="trip-day-header">
-                        <span className="trip-day-badge">Day {index + 1}</span>
-                        <span className="trip-day-date">{day.date || "—"}</span>
+                        <div className="trip-day-header__primary">
+                          <span className="trip-day-badge">Day {index + 1}</span>
+                          <span className="trip-day-date">{day.date || "—"}</span>
+                        </div>
+                        {isTripOwner && day.id != null ? (
+                          <button
+                            type="button"
+                            className="trip-itinerary-add-btn trip-day-header__add-btn"
+                            onClick={() => handleAddDayActivity(day.id)}
+                            disabled={!!busy}
+                          >
+                            Add new Stop
+                          </button>
+                        ) : null}
                       </div>
 
-                      {day.activities?.map((activity, i) => {
+                      {dayActivities.map((activity, i) => {
                         const showTimes =
                           (activity.startTime && activity.startTime !== "—") ||
                           (activity.endTime && activity.endTime !== "—");
                         const stopsBefore =
-                          day.activities?.slice(0, i).reduce(
+                          dayActivities.slice(0, i).reduce(
                             (n, a) => n + getActivityPlacesForDisplay(a).length,
                             0
                           ) ?? 0;
                         const displayPlacesList = getActivityPlacesForDisplay(activity);
-                        const prefReason = activity.userPreference?.reason;
                         const aid = activity.id;
                         const activityStarValue =
                           activity.userRating ??
@@ -654,6 +856,24 @@ function TripDetails() {
                               }
                             >
                             <div className="trip-activity-toolbar">
+                              {isTripOwner && day.id != null && activity.id != null && (
+                                <div
+                                  className="trip-activity-sq-actions"
+                                  role="group"
+                                  aria-label="Remove stop"
+                                >
+                                  <button
+                                    type="button"
+                                    className="trip-activity-sq trip-activity-sq--danger"
+                                    onClick={() => openDeleteActivityModal(activity.id)}
+                                    disabled={!!busy}
+                                    title="Remove this stop"
+                                    aria-label="Remove this stop"
+                                  >
+                                    <ActivityTrashIcon />
+                                  </button>
+                                </div>
+                              )}
                               {activity.id != null && (
                                 <button
                                   type="button"
@@ -692,12 +912,6 @@ function TripDetails() {
                               </div>
                             ) : null}
 
-                            {prefReason && (
-                              <p className="trip-activity-pref-note" role="status">
-                                Your version:{" "}
-                                {REPLACEMENT_REASON_LABELS[prefReason] ?? prefReason}
-                              </p>
-                            )}
                             {displayPlacesList.length > 0 ? (
                               <ul className="trip-places">
                                 {displayPlacesList.map((place, j) => (
@@ -722,7 +936,23 @@ function TripDetails() {
           </section>
         </div>
 
-        <TripRouteMap trip={trip} displayDays={displayDays} />
+        <div className="trip-map-column">
+          <TripRouteMap
+            trip={tripSnapshotForMap ?? trip}
+            displayDays={tripSnapshotForMap ? mapDisplayDays : displayDays}
+          />
+          <div className="trip-map-column__actions">
+            <button
+              type="button"
+              className="trip-map-update-btn"
+              onClick={handleUpdateRouteMap}
+              disabled={!!busy || !trip}
+              title="Reload the map with the latest stops (avoids slow reloads on every edit)"
+            >
+              Update map
+            </button>
+          </div>
+        </div>
       </div>
 
       {replaceModal ? (
@@ -740,7 +970,7 @@ function TripDetails() {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 id="trip-replace-modal-title" className="trip-replace-modal__title">
-              Why replace this stop?
+              {replaceModal.mode === "delete" ? "Why remove this stop?" : "Why replace this stop?"}
             </h2>
             <p id={replaceModalDescId} className="trip-replace-modal__lead">
               Your choice is saved only for you — the shared trip stays the same for others.
@@ -751,7 +981,7 @@ function TripDetails() {
                 type="button"
                 className="trip-replace-modal__choice"
                 disabled={!!busy}
-                onClick={() => handleReplaceReason("WAS_HERE")}
+                onClick={() => handleReplaceOrDeleteReason("WAS_HERE")}
               >
                 I was here
               </button>
@@ -759,7 +989,7 @@ function TripDetails() {
                 type="button"
                 className="trip-replace-modal__choice trip-replace-modal__choice--secondary"
                 disabled={!!busy}
-                onClick={() => handleReplaceReason("DONT_WANT_TO_GO")}
+                onClick={() => handleReplaceOrDeleteReason("DONT_WANT_TO_GO")}
               >
                 I don’t want to go here
               </button>

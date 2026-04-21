@@ -60,6 +60,23 @@ export async function replaceActivity(tripId, activityId, { userId, reason }) {
 }
 
 /**
+ * DELETE — remove the trip. Session required (owner).
+ * Success often 204 No Content.
+ */
+export async function deletePublicTrip(tripId) {
+  const res = await fetch(apiUrl(`/api/public/trips/${encodeURIComponent(tripId)}`), {
+    method: "DELETE",
+    credentials: "include",
+  });
+  if (res.status === 204) return true;
+  const data = await parseResponseJson(res);
+  if (!res.ok) {
+    throw new Error(errorMessageFromBody(data, "Could not delete this trip."));
+  }
+  return true;
+}
+
+/**
  * PUT — partial update (e.g. `{ isPublic: true }`). Sends session cookies when present.
  */
 export async function updatePublicTrip(tripId, patch) {
@@ -72,6 +89,53 @@ export async function updatePublicTrip(tripId, patch) {
   const data = await parseResponseJson(res);
   if (!res.ok) {
     throw new Error(errorMessageFromBody(data, "Could not update this trip."));
+  }
+  return unwrapTripPayload(data);
+}
+
+/**
+ * DELETE — remove an activity (`ActivityManualEditRequest`: reason; `userId` for current user). Session required for owners.
+ * Returns updated trip JSON when present; otherwise `null` (e.g. 204).
+ */
+export async function deleteTripActivity(tripId, activityId, { userId, reason }) {
+  const res = await fetch(
+    apiUrl(
+      `/api/public/trips/${encodeURIComponent(tripId)}/activities/${encodeURIComponent(activityId)}`
+    ),
+    {
+      method: "DELETE",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, reason }),
+    }
+  );
+  const data = await parseResponseJson(res);
+  if (!res.ok) {
+    throw new Error(errorMessageFromBody(data, "Could not remove this stop."));
+  }
+  if (data && typeof data === "object" && data.id != null) {
+    return unwrapTripPayload(data);
+  }
+  return null;
+}
+
+/**
+ * POST — add an activity to a day (no body; path params + session). Session required for owners.
+ */
+export async function addDayActivity(tripId, dayId) {
+  const res = await fetch(
+    apiUrl(
+      `/api/public/trips/${encodeURIComponent(tripId)}/days/${encodeURIComponent(dayId)}/activities`
+    ),
+    {
+      method: "POST",
+      credentials: "include",
+    }
+  );
+  if (res.status === 204) return null;
+  const data = await parseResponseJson(res);
+  if (!res.ok) {
+    throw new Error(errorMessageFromBody(data, "Could not add this stop."));
   }
   return unwrapTripPayload(data);
 }
