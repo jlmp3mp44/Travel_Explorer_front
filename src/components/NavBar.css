@@ -1,153 +1,205 @@
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
+
 .navbar {
   position: fixed;
   top: 0;
   left: 0;
-  right: 0; /* Використовуємо замість width: 100vw */
-  height: 70px;
-
-  display: flex !important; /* Force flex */
-  justify-content: space-between !important;
+  right: 0;
+  height: 64px;
+  display: flex !important;
   align-items: center;
-
-  padding: 0 clamp(16px, 4vw, 30px);
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 0 clamp(14px, 3vw, 28px);
   background: linear-gradient(
-    120deg,
-    rgba(102, 126, 234, 0.97) 0%,
-    rgba(118, 75, 162, 0.95) 55%,
-    rgba(102, 126, 234, 0.92) 100%
+    115deg,
+    rgba(94, 108, 182, 0.98) 0%,
+    rgba(118, 75, 162, 0.96) 48%,
+    rgba(86, 102, 168, 0.98) 100%
   );
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   box-shadow:
-    0 4px 24px rgba(45, 35, 100, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    0 2px 20px rgba(45, 35, 90, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   z-index: 1000;
-  box-sizing: border-box; /* Важливо! */
 }
 
-/* LEFT */
-.nav-left {
+.navbar__left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  flex-shrink: 0;
   flex-wrap: wrap;
+  min-width: 0;
 }
 
-/* RIGHT */
-.nav-right {
+/* Grows between Discover and Create trip — button ends up next to My trips */
+.navbar__spacer {
+  flex: 1 1 32px;
+  min-width: 16px;
+  height: 8px;
+  pointer-events: none;
+}
+
+.navbar__create {
+  flex-shrink: 0;
+}
+
+/* Right cluster: account actions */
+.navbar__user {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+  flex-shrink: 0;
 }
 
-.home-btn {
-  background: transparent;
-  border: 2px solid white;
-  color: white;
-  padding: 8px 16px;
-  border-radius: 20px;
-  cursor: pointer;
+.navbar__user-placeholder {
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.navbar__username {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 6px;
+  font-size: 0.82rem;
   font-weight: 600;
-  transition: 0.3s;
+  color: rgba(255, 255, 255, 0.88);
 }
 
-.home-btn:hover {
-  background: white;
-  color: #6a5acd;
+/* —— Unified button system —— */
+.nav-btn {
+  margin: 0;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  border-radius: 10px;
+  padding: 9px 14px;
+  border: 1px solid transparent;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.15s ease;
 }
 
-.discover-btn {
+.nav-btn:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 2px;
+}
+
+/* Glass pills on gradient */
+.nav-btn--ghost {
+  color: rgba(255, 255, 255, 0.96);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.32);
+}
+
+.nav-btn--ghost:hover {
   background: rgba(255, 255, 255, 0.18);
-  border: 2px solid rgba(255, 255, 255, 0.85);
-  color: white;
-  padding: 8px 16px;
-  border-radius: 20px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.95rem;
-  font-family: inherit;
-  transition: background 0.2s ease, transform 0.15s ease;
-}
-
-.discover-btn:hover {
-  background: rgba(255, 255, 255, 0.32);
+  border-color: rgba(255, 255, 255, 0.45);
   transform: translateY(-1px);
 }
 
-.my-trips-btn {
+/* Primary CTA — sits after Discover; white chip, brand text */
+.nav-btn--create {
+  color: #4a3d9e;
+  background: #fff;
+  border-color: rgba(255, 255, 255, 0.95);
+  font-weight: 700;
+  padding: 10px 18px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+}
+
+.nav-btn--create:hover {
+  background: #fafbff;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.14);
+  transform: translateY(-1px);
+}
+
+.nav-btn--create:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Sign out — low emphasis */
+.nav-btn--muted {
+  color: rgba(255, 255, 255, 0.92);
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.nav-btn--muted:hover {
   background: rgba(255, 255, 255, 0.12);
-  border: 2px solid rgba(255, 255, 255, 0.75);
-  color: white;
-  padding: 8px 16px;
-  border-radius: 20px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.95rem;
-  font-family: inherit;
-  transition: background 0.2s ease, transform 0.15s ease;
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
-.my-trips-btn:hover {
+/* Sign up when logged out */
+.nav-btn--solid {
+  color: #fff;
   background: rgba(255, 255, 255, 0.22);
-  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.55);
 }
 
-.profile-btn {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  border: 2px solid rgba(255, 255, 255, 0.85);
-  padding: 8px 16px;
-  border-radius: 20px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: background 0.2s ease, transform 0.15s ease;
+.nav-btn--solid:hover {
+  background: rgba(255, 255, 255, 0.32);
+  border-color: rgba(255, 255, 255, 0.75);
 }
 
-.profile-btn:hover {
-  background: rgba(255, 255, 255, 0.35);
-  transform: translateY(-1px);
+@media (prefers-reduced-motion: reduce) {
+  .nav-btn--ghost:hover,
+  .nav-btn--create:hover,
+  .nav-btn--muted:hover,
+  .nav-btn--solid:hover {
+    transform: none;
+  }
 }
 
-.username {
-  color: white;
-  font-weight: bold;
-}
+@media (max-width: 620px) {
+  .navbar {
+    height: auto;
+    min-height: 56px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
 
-/* Auth: same primary style for Sign In and Sign Up */
-.sign-in-btn,
-.sign-up-btn {
-  background: linear-gradient(135deg, #4facfe, #6a5acd);
-  color: white;
-  border: none;
-  padding: 8px 18px;
-  border-radius: 20px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  box-shadow: 0 2px 10px rgba(106, 90, 205, 0.35);
-}
+  .navbar__spacer {
+    display: none;
+    flex: 0;
+    min-width: 0;
+  }
 
-.sign-in-btn:hover,
-.sign-up-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(79, 172, 254, 0.45);
-}
+  .navbar__left {
+    justify-content: center;
+  }
 
-.logout-btn {
-  background: rgba(255, 255, 255, 0.95);
-  color: #5b4db8;
-  border: none;
-  padding: 8px 18px;
-  border-radius: 20px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: background 0.2s ease;
-}
+  .navbar__user {
+    flex: 1 1 100%;
+    justify-content: center;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    margin-left: 0;
+  }
 
-.logout-btn:hover {
-  background: white;
+  .navbar__username {
+    display: none;
+  }
 }
