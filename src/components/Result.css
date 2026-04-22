@@ -23,7 +23,7 @@
   gap: 6px;
   margin-bottom: 20px;
   padding: 10px 16px;
-  border-radius: 10px;
+  border-radius: 0;
   border: 1px solid var(--border);
   background: var(--bg);
   color: var(--text-h);
@@ -35,8 +35,8 @@
 }
 
 .result-back:hover {
-  background: rgba(102, 126, 234, 0.08);
-  border-color: rgba(102, 126, 234, 0.35);
+  background: rgba(var(--brand-rgb), 0.08);
+  border-color: rgba(var(--brand-rgb), 0.35);
   transform: translateX(-2px);
 }
 
@@ -70,7 +70,7 @@
 
 .result-stat {
   padding: 14px 16px;
-  border-radius: 14px;
+  border-radius: 0;
   background: var(--surface-glass);
   backdrop-filter: blur(10px);
   border: 1px solid var(--surface-border);
@@ -110,7 +110,7 @@
 }
 
 .result-day {
-  border-radius: 14px;
+  border-radius: 0;
   border: 1px solid var(--border);
   background: var(--bg);
   padding: 16px 18px;
@@ -147,13 +147,15 @@
 .result-btn-primary {
   padding: 12px 22px;
   border: none;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 0.95rem;
+  border-radius: 0;
+  font-weight: 700;
+  font-size: 0.82rem;
   font-family: inherit;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   cursor: pointer;
   color: #fff;
-  background: linear-gradient(135deg, var(--brand), var(--brand-2));
+  background: var(--brand-gradient);
   box-shadow: var(--btn-shadow);
   transition: transform 0.2s ease, filter 0.2s ease;
 }
@@ -169,7 +171,7 @@
   margin: 0 auto;
   padding: 32px 28px;
   text-align: center;
-  border-radius: 18px;
+  border-radius: 0;
   background: var(--surface-glass);
   backdrop-filter: blur(12px);
   border: 1px solid var(--surface-border);

@@ -42,9 +42,9 @@
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(ellipse 120% 80% at 100% 0%, rgba(255, 200, 140, 0.18), transparent 50%),
-    radial-gradient(ellipse 90% 60% at 0% 100%, rgba(120, 200, 255, 0.12), transparent 45%),
-    linear-gradient(165deg, #4f5fc9 0%, #6b4ba3 42%, #4a3f8f 100%);
+    radial-gradient(ellipse 120% 80% at 100% 0%, rgba(var(--brand-rgb), 0.22), transparent 52%),
+    radial-gradient(ellipse 90% 60% at 0% 100%, rgba(255, 180, 120, 0.12), transparent 46%),
+    linear-gradient(165deg, #2d313d 0%, #252830 42%, #1c1e25 100%);
   pointer-events: none;
 }
 
@@ -133,7 +133,7 @@
 
 .trip-stepper__item.is-active .trip-stepper__dot {
   background: rgba(255, 255, 255, 0.95);
-  color: #5a4ab5;
+  color: var(--brand);
   border-color: transparent;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   transform: scale(1.06);
@@ -182,7 +182,7 @@
   backdrop-filter: blur(18px) saturate(1.2);
   -webkit-backdrop-filter: blur(18px) saturate(1.2);
   border: 1px solid rgba(255, 255, 255, 0.28);
-  border-radius: 22px;
+  border-radius: 0;
   padding: 24px 22px 26px;
   box-shadow:
     0 4px 24px rgba(0, 0, 0, 0.18),
@@ -290,11 +290,12 @@
   align-items: center;
   margin-top: 12px;
   padding: 6px 14px;
-  border-radius: 999px;
+  border-radius: 0;
   font-size: 0.8rem;
   font-weight: 700;
-  letter-spacing: 0.02em;
-  color: rgba(90, 70, 180, 0.95);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--brand-2);
   background: rgba(255, 255, 255, 0.92);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
 }
@@ -458,7 +459,7 @@
 
 .interest-chip--selected {
   background: rgba(255, 255, 255, 0.95) !important;
-  color: #4a3f9e !important;
+  color: var(--brand-2) !important;
   border-color: transparent !important;
 }
 
@@ -574,7 +575,7 @@ button.btn-secondary:hover {
   width: 100%;
   padding: 10px 12px;
   margin-bottom: 10px;
-  border-radius: 10px;
+  border-radius: 0;
   font-size: 14px;
   transition: box-shadow 0.2s;
 }
@@ -589,15 +590,16 @@ button.btn-secondary:hover {
   width: 100%;
   padding: 13px 16px;
   border: none;
-  border-radius: 14px;
+  border-radius: 0;
   cursor: pointer;
   font-weight: 700;
-  font-size: 0.95rem;
-  letter-spacing: 0.02em;
-  background: linear-gradient(180deg, #fff 0%, #f3f0ff 100%);
-  color: #4f3d9e;
+  font-size: 0.82rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: var(--brand-gradient);
+  color: #fff;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  box-shadow: 0 6px 22px rgba(var(--brand-rgb), 0.32);
 }
 
 .trip-page button:not(.interest-group__header):not(.interest-chip):not(.searchable-select__trigger):not(.searchable-select__option):hover {
@@ -666,7 +668,7 @@ button.btn-secondary:hover {
 
 .trip-page .searchable-select .searchable-select__option:hover,
 .trip-page .searchable-select .searchable-select__option--hl {
-  background: rgba(102, 126, 234, 0.35) !important;
+  background: rgba(var(--brand-rgb), 0.35) !important;
   color: #fff !important;
 }
 

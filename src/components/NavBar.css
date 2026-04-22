@@ -15,18 +15,11 @@
   justify-content: flex-start;
   gap: 10px;
   padding: 0 clamp(14px, 3vw, 28px);
-  background: linear-gradient(
-    115deg,
-    rgba(94, 108, 182, 0.98) 0%,
-    rgba(118, 75, 162, 0.96) 48%,
-    rgba(86, 102, 168, 0.98) 100%
-  );
+  background: rgba(249, 247, 242, 0.92);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  box-shadow:
-    0 2px 20px rgba(45, 35, 90, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 1px 0 rgba(var(--ink-rgb), 0.08);
+  border-bottom: 1px solid rgba(var(--ink-rgb), 0.08);
   z-index: 1000;
 }
 
@@ -77,19 +70,21 @@
   padding: 0 6px;
   font-size: 0.82rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.88);
+  color: rgba(var(--ink-rgb), 0.72);
 }
 
 /* —— Unified button system —— */
 .nav-btn {
   margin: 0;
   font-family: inherit;
-  font-size: 0.875rem;
+  font-size: 0.72rem;
   font-weight: 600;
   line-height: 1.2;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   cursor: pointer;
-  border-radius: 10px;
-  padding: 9px 14px;
+  border-radius: 0;
+  padding: 10px 14px;
   border: 1px solid transparent;
   transition:
     background 0.18s ease,
@@ -100,66 +95,68 @@
 }
 
 .nav-btn:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.85);
+  outline: 2px solid rgba(var(--brand-rgb), 0.55);
   outline-offset: 2px;
 }
 
-/* Glass pills on gradient */
+/* Text-style links on cream bar */
 .nav-btn--ghost {
-  color: rgba(255, 255, 255, 0.96);
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.32);
+  color: rgba(var(--ink-rgb), 0.88);
+  background: transparent;
+  border-color: transparent;
 }
 
 .nav-btn--ghost:hover {
-  background: rgba(255, 255, 255, 0.18);
-  border-color: rgba(255, 255, 255, 0.45);
+  color: var(--brand);
+  background: rgba(var(--brand-rgb), 0.08);
+  border-color: transparent;
   transform: translateY(-1px);
 }
 
-/* Primary CTA — sits after Discover; white chip, brand text */
+/* Primary CTA — charcoal block like “Discover more” */
 .nav-btn--create {
-  color: #4a3d9e;
-  background: #fff;
-  border-color: rgba(255, 255, 255, 0.95);
+  color: #fff;
+  background: var(--brand-2);
+  border-color: var(--brand-2);
   font-weight: 700;
-  padding: 10px 18px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  padding: 11px 20px;
+  box-shadow: 0 4px 18px rgba(var(--ink-rgb), 0.2);
 }
 
 .nav-btn--create:hover {
-  background: #fafbff;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.14);
+  background: #242833;
+  border-color: #242833;
+  box-shadow: 0 6px 22px rgba(var(--ink-rgb), 0.24);
   transform: translateY(-1px);
 }
 
 .nav-btn--create:active {
   transform: translateY(0);
-  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 10px rgba(var(--ink-rgb), 0.18);
 }
 
 /* Sign out — low emphasis */
 .nav-btn--muted {
-  color: rgba(255, 255, 255, 0.92);
+  color: rgba(var(--ink-rgb), 0.75);
   background: transparent;
-  border-color: rgba(255, 255, 255, 0.35);
+  border-color: rgba(var(--ink-rgb), 0.2);
 }
 
 .nav-btn--muted:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(var(--ink-rgb), 0.06);
+  border-color: rgba(var(--ink-rgb), 0.32);
 }
 
 /* Sign up when logged out */
 .nav-btn--solid {
   color: #fff;
-  background: rgba(255, 255, 255, 0.22);
-  border-color: rgba(255, 255, 255, 0.55);
+  background: var(--brand);
+  border-color: var(--brand);
 }
 
 .nav-btn--solid:hover {
-  background: rgba(255, 255, 255, 0.32);
-  border-color: rgba(255, 255, 255, 0.75);
+  background: var(--brand-deep);
+  border-color: var(--brand-deep);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -195,7 +192,7 @@
     flex: 1 1 100%;
     justify-content: center;
     padding-top: 6px;
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    border-top: 1px solid rgba(var(--ink-rgb), 0.08);
     margin-left: 0;
   }
 

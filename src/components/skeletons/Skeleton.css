@@ -11,9 +11,9 @@
   border-radius: 8px;
   background: linear-gradient(
     90deg,
-    rgba(102, 126, 234, 0.12) 0%,
-    rgba(102, 126, 234, 0.22) 45%,
-    rgba(102, 126, 234, 0.12) 90%
+    rgba(var(--brand-rgb), 0.12) 0%,
+    rgba(var(--brand-rgb), 0.22) 45%,
+    rgba(var(--brand-rgb), 0.12) 90%
   );
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.2s ease-in-out infinite;
@@ -22,7 +22,7 @@
 @media (prefers-reduced-motion: reduce) {
   .skeleton-line {
     animation: none;
-    background: rgba(102, 126, 234, 0.15);
+    background: rgba(var(--brand-rgb), 0.15);
   }
 }
 
@@ -47,7 +47,7 @@
 .skeleton-trip-card {
   min-height: 168px;
   border-radius: 14px;
-  border: 1px solid rgba(102, 126, 234, 0.14);
+  border: 1px solid rgba(var(--brand-rgb), 0.14);
   background: var(--bg, #fff);
   overflow: hidden;
   padding: 16px;
@@ -62,7 +62,7 @@
   height: 4px;
   border-radius: 2px;
   margin: -16px -16px 4px -16px;
-  background: rgba(102, 126, 234, 0.2);
+  background: rgba(var(--brand-rgb), 0.2);
 }
 
 .skeleton-trip-card__title {
@@ -156,7 +156,7 @@
 
 .trip-details-skeleton__day {
   border-radius: 14px;
-  border: 1px solid rgba(102, 126, 234, 0.12);
+  border: 1px solid rgba(var(--brand-rgb), 0.12);
   padding: 16px;
   margin-bottom: 14px;
 }
@@ -188,5 +188,5 @@
 .trip-details-skeleton__map {
   min-height: 360px;
   border-radius: 16px;
-  border: 1px solid rgba(102, 126, 234, 0.14);
+  border: 1px solid rgba(var(--brand-rgb), 0.14);
 }

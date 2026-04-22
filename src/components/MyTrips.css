@@ -34,7 +34,7 @@
 
 .my-trips-error {
   padding: 12px 14px;
-  border-radius: 10px;
+  border-radius: 0;
   background: rgba(185, 28, 28, 0.08);
   border: 1px solid rgba(185, 28, 28, 0.22);
   color: #b91c1c;
@@ -53,7 +53,7 @@
   padding: 0;
   font: inherit;
   font-weight: 700;
-  color: var(--brand, #667eea);
+  color: var(--brand);
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -74,8 +74,8 @@
   align-items: center;
   gap: 12px 16px;
   padding: 14px 16px;
-  border-radius: 14px;
-  border: 1px solid rgba(102, 126, 234, 0.18);
+  border-radius: 0;
+  border: 1px solid rgba(var(--brand-rgb), 0.18);
   background: var(--surface-glass, rgba(255, 255, 255, 0.88));
 }
 
@@ -92,7 +92,7 @@
 }
 
 .my-trips-row-main:hover .my-trips-row-title {
-  color: var(--brand, #667eea);
+  color: var(--brand);
 }
 
 .my-trips-row-title {
@@ -180,7 +180,7 @@
 }
 
 .my-trips-delete-inline__btn--cancel:hover:not(:disabled) {
-  border-color: rgba(102, 126, 234, 0.45);
+  border-color: rgba(var(--brand-rgb), 0.45);
 }
 
 .my-trips-delete-inline__btn--danger {

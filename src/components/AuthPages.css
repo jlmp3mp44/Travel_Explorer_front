@@ -14,7 +14,7 @@
   width: 100%;
   max-width: 420px;
   padding: 32px 28px 30px;
-  border-radius: 18px;
+  border-radius: 0;
   text-align: left;
   background: var(--surface-glass);
   backdrop-filter: blur(14px);
@@ -65,7 +65,7 @@
 .auth-form input {
   padding: 12px 14px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 0;
   font-size: 1rem;
   font-family: inherit;
   color: var(--text-h);
@@ -75,8 +75,8 @@
 
 .auth-form input:focus {
   outline: none;
-  border-color: rgba(102, 126, 234, 0.65);
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+  border-color: rgba(var(--brand-rgb), 0.65);
+  box-shadow: 0 0 0 3px rgba(var(--brand-rgb), 0.2);
 }
 
 .auth-password-field {
@@ -110,12 +110,12 @@
 }
 
 .auth-password-toggle:hover {
-  background: rgba(102, 126, 234, 0.12);
+  background: rgba(var(--brand-rgb), 0.12);
   color: var(--text-h, #1a1a2e);
 }
 
 .auth-password-toggle:focus-visible {
-  outline: 2px solid rgba(102, 126, 234, 0.65);
+  outline: 2px solid rgba(var(--brand-rgb), 0.65);
   outline-offset: 2px;
 }
 
@@ -129,13 +129,15 @@
   margin-top: 6px;
   padding: 13px 16px;
   border: none;
-  border-radius: 12px;
+  border-radius: 0;
   cursor: pointer;
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 0.82rem;
+  font-weight: 700;
   font-family: inherit;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: #fff;
-  background: linear-gradient(135deg, var(--brand), var(--brand-2));
+  background: var(--brand-gradient);
   box-shadow: var(--btn-shadow);
   transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
@@ -143,7 +145,7 @@
 .auth-submit:hover:not(:disabled) {
   transform: translateY(-1px);
   filter: brightness(1.04);
-  box-shadow: 0 12px 28px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 12px 28px rgba(var(--brand-rgb), 0.38);
 }
 
 .auth-submit:disabled {
@@ -154,7 +156,7 @@
 
 .auth-alert {
   padding: 12px 14px;
-  border-radius: 10px;
+  border-radius: 0;
   font-size: 0.9rem;
   line-height: 1.45;
   margin: 0 0 16px;
@@ -207,7 +209,7 @@
 
 @media (prefers-color-scheme: dark) {
   .auth-footer a {
-    color: #a5b4fc;
+    color: var(--brand-mid);
   }
 }
 
