@@ -44,6 +44,29 @@
   cursor: not-allowed;
 }
 
+.trip-pdf-btn {
+  padding: 10px 16px;
+  border-radius: 0;
+  border: 1px solid rgba(30, 120, 90, 0.35);
+  background: rgba(240, 255, 248, 0.9);
+  color: #0d3d2e;
+  font-weight: 600;
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.trip-pdf-btn:hover:not(:disabled) {
+  background: rgba(220, 248, 234, 0.95);
+  border-color: rgba(30, 120, 90, 0.5);
+}
+
+.trip-pdf-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .trip-delete-whole-hint {
   margin: -4px 0 14px;
   padding: 10px 14px;
@@ -267,6 +290,13 @@
   align-self: start;
 }
 
+.trip-map-wrap {
+  position: relative;
+  width: 100%;
+  border-radius: 0;
+  isolation: isolate;
+}
+
 .trip-map-column__actions {
   display: flex;
   flex-wrap: wrap;
@@ -274,6 +304,23 @@
   justify-content: flex-end;
   gap: 10px;
   padding-right: 2px;
+}
+
+/* Float above Google Maps tiles so the control stays clickable */
+.trip-map-column__actions--overlay {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 500;
+  padding: 0;
+  margin: 0;
+  pointer-events: none;
+}
+
+.trip-map-column__actions--overlay .trip-map-update-btn {
+  pointer-events: auto;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.22);
+  background: rgba(255, 255, 255, 0.96);
 }
 
 .trip-map-update-btn {

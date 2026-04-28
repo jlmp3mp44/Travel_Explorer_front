@@ -28,6 +28,9 @@ function Navbar() {
         <button type="button" className="nav-btn nav-btn--ghost" onClick={() => navigate("/")}>
           Home
         </button>
+        <button type="button" className="nav-btn nav-btn--ghost" onClick={() => navigate("/best-trips")}>
+          Best trips
+        </button>
         <button type="button" className="nav-btn nav-btn--ghost" onClick={() => navigate("/discover")}>
           Discover
         </button>

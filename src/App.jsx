@@ -10,6 +10,7 @@ import Register from "./pages/Register";
 import Login from "./pages/Login";
 import Profile from "./pages/Profile";
 import Discover from "./pages/Discover";
+import BestTrips from "./pages/BestTrips";
 import MyTrips from "./pages/MyTrips";
 import TripDeletedFlashBanner from "./components/TripDeletedFlashBanner";
 
@@ -29,6 +30,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/discover" element={<Discover />} />
+            <Route path="/best-trips" element={<BestTrips />} />
             <Route path="/my-trips" element={<MyTrips />} />
             <Route path="/trip" element={<Trip />} />
             <Route path="/result" element={<Result />} />

@@ -687,6 +687,213 @@ button.btn-secondary:hover {
   }
 }
 
+/* Step 5: trip intensity */
+.trip-form--pace {
+  max-width: 100%;
+}
+
+.trip-pace-step .trip-step-title {
+  font-size: 1.05rem;
+  line-height: 1.35;
+}
+
+@keyframes trip-intensity-in {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+.trip-intensity-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 6px 0 4px;
+}
+
+.trip-intensity-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.96);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  opacity: 0;
+  animation: trip-intensity-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  transition:
+    transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1),
+    border-color 0.22s ease,
+    background 0.22s ease,
+    box-shadow 0.28s ease,
+    filter 0.35s ease;
+}
+
+.trip-intensity-card__badge {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #0f3d2a;
+  background: linear-gradient(145deg, #b8f5c8 0%, #7ee0a8 100%);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.trip-intensity-grid .trip-intensity-card:nth-child(1) {
+  animation-delay: 0.06s;
+}
+
+.trip-intensity-grid .trip-intensity-card:nth-child(2) {
+  animation-delay: 0.14s;
+}
+
+.trip-intensity-grid .trip-intensity-card:nth-child(3) {
+  animation-delay: 0.22s;
+}
+
+.trip-intensity-card:hover:not(.trip-intensity-card--selected) {
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.14);
+  transform: translateY(-3px);
+}
+
+.trip-intensity-card--selected {
+  border-color: rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.22);
+  transform: scale(1.035) translateY(-2px);
+  box-shadow: 0 0 0 2px rgba(var(--brand-rgb), 0.5), 0 16px 36px rgba(0, 0, 0, 0.2);
+}
+
+.trip-intensity-card__emoji {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.trip-intensity-card__title {
+  font-size: 1rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.trip-intensity-card__body {
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.78);
+  font-weight: 500;
+}
+
+.trip-intensity-card--selected .trip-intensity-card__body {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.trip-pace-hint {
+  margin: 4px 0 0;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.62);
+  text-align: center;
+}
+
+.trip-pace-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  text-align: left;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.1) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.12);
+  animation: trip-pace-summary-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes trip-pace-summary-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.trip-pace-summary__mark {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-top: 2px;
+  border-radius: 50%;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #0f3d2a;
+  background: linear-gradient(145deg, #c8ffd4 0%, #6fe0a0 100%);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+}
+
+.trip-pace-summary__text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.trip-pace-summary__kicker {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.trip-pace-summary__line {
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.94);
+}
+
+.trip-pace-summary__emoji {
+  margin-right: 6px;
+}
+
+.trip-pace-summary__name {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: rgba(255, 255, 255, 0.99);
+}
+
+.trip-pace-summary__dash {
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.trip-pace-summary__detail {
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.82);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .trip-step-surface {
     animation: none;
@@ -694,5 +901,24 @@ button.btn-secondary:hover {
 
   .interest-group__body-wrap {
     transition: none;
+  }
+
+  .trip-intensity-card {
+    animation: none;
+    opacity: 1;
+    filter: none;
+    transition: border-color 0.2s ease, background 0.2s ease;
+  }
+
+  .trip-intensity-card:hover:not(.trip-intensity-card--selected) {
+    transform: none;
+  }
+
+  .trip-intensity-card--selected {
+    transform: none;
+  }
+
+  .trip-pace-summary {
+    animation: none;
   }
 }

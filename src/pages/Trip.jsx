@@ -31,6 +31,28 @@ const TRIP_STEPS = [
   { id: 2, label: "Place", hint: "Country & city" },
   { id: 3, label: "Budget", hint: "Spending plan" },
   { id: 4, label: "Interests", hint: "What to explore" },
+  { id: 5, label: "Pace", hint: "Trip intensity" },
+];
+
+const TRIP_INTENSITY_OPTIONS = [
+  {
+    value: "LOW",
+    emoji: "🧘",
+    title: "Relaxed",
+    body: "Slow, minimal activities",
+  },
+  {
+    value: "MEDIUM",
+    emoji: "🚶",
+    title: "Balanced",
+    body: "Mix of rest and exploration",
+  },
+  {
+    value: "HIGH",
+    emoji: "⚡",
+    title: "Intense",
+    body: "Packed schedule, many activities",
+  },
 ];
 
 function toLocalISODate(d) {
@@ -65,6 +87,8 @@ function Trip() {
   const [loading, setLoading] = useState(false);
   /** Shown in Discover when true; default matches backend default. */
   const [isPublic, setIsPublic] = useState(true);
+  /** LOW | MEDIUM | HIGH — sent as `intensity` on create. */
+  const [intensity, setIntensity] = useState("");
 
   const [placeCategories, setPlaceCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
@@ -228,6 +252,12 @@ function Trip() {
       setError("Please enter your budget.");
       return;
     }
+    if (step === 4) {
+      if (selectedInterests.length === 0) {
+        setError("Choose at least one interest from any group.");
+        return;
+      }
+    }
     setError("");
     setStep(step + 1);
   };
@@ -302,8 +332,13 @@ function Trip() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    if (step !== 5) return;
     if (selectedInterests.length === 0) {
       setError("Choose at least one interest from any group.");
+      return;
+    }
+    if (!intensity) {
+      setError("Please choose a pace for your trip.");
       return;
     }
     setLoading(true);
@@ -322,6 +357,7 @@ function Trip() {
       /** Backend DTO uses `categories` (e.g. ["museum"]), not only hobbies/interestIds */
       categories: categoryCodes,
       isPublic,
+      intensity,
       ...(cityName ? { city: cityName } : {}),
       ...(currency ? { currency } : {}),
       hobbies: selectedInterests.map((s) => s.label),
@@ -397,6 +433,11 @@ function Trip() {
     );
   }, [placeCategories]);
 
+  const selectedIntensityOption = useMemo(
+    () => TRIP_INTENSITY_OPTIONS.find((o) => o.value === intensity) ?? null,
+    [intensity]
+  );
+
   if (authLoading) {
     return (
       <div className="trip-page trip-page--auth-wait">
@@ -416,7 +457,7 @@ function Trip() {
         <p className="trip-page__kicker">New itinerary</p>
         <h1 className="trip-page__title">Plan your trip</h1>
         <p className="trip-page__subtitle">
-          Step {step} of 4 · {TRIP_STEPS[step - 1]?.hint}
+          Step {step} of 5 · {TRIP_STEPS[step - 1]?.hint}
         </p>
         <nav className="trip-stepper" aria-label="Planning steps">
           {TRIP_STEPS.map((s) => {
@@ -439,7 +480,7 @@ function Trip() {
       </div>
 
       <form
-        className={`trip-form ${step === 4 ? "trip-form--interests" : ""}`}
+        className={`trip-form ${step === 4 ? "trip-form--interests" : ""} ${step === 5 ? "trip-form--pace" : ""}`}
         onSubmit={handleSubmit}
       >
         {step === 1 && (
@@ -668,6 +709,85 @@ function Trip() {
             )}
 
             {error && <p className="error trip-interests-error">{error}</p>}
+            <div className="trip-interests-actions form-actions">
+              <button type="button" className="btn-secondary" onClick={goBack}>
+                Back
+              </button>
+              <button
+                type="button"
+                className="trip-btn-primary"
+                disabled={
+                  categoriesLoading ||
+                  !!categoriesError ||
+                  !sortedPlaceCategories.length
+                }
+                onClick={handleNext}
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 5 && (
+          <div className="trip-step-surface form-group trip-pace-step">
+            <div className="trip-step-heading">
+              <h2 className="trip-step-title">What pace do you prefer for your trip?</h2>
+              <p className="trip-step-desc">
+                This helps match how full each day feels. You can still adjust stops later.
+              </p>
+            </div>
+            <div className="trip-intensity-grid" role="radiogroup" aria-label="Trip pace">
+              {TRIP_INTENSITY_OPTIONS.map((opt) => {
+                const selected = intensity === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={`trip-intensity-card ${selected ? "trip-intensity-card--selected" : ""}`}
+                    onClick={() => setIntensity(opt.value)}
+                    aria-pressed={selected}
+                    aria-label={
+                      selected
+                        ? `${opt.title}, selected pace`
+                        : `${opt.title}, not selected`
+                    }
+                  >
+                    {selected ? (
+                      <span className="trip-intensity-card__badge" aria-hidden="true">
+                        ✓
+                      </span>
+                    ) : null}
+                    <span className="trip-intensity-card__emoji" aria-hidden="true">
+                      {opt.emoji}
+                    </span>
+                    <span className="trip-intensity-card__title">{opt.title}</span>
+                    <span className="trip-intensity-card__body">{opt.body}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {selectedIntensityOption ? (
+              <div className="trip-pace-summary" role="status" aria-live="polite">
+                <span className="trip-pace-summary__mark" aria-hidden="true">
+                  ✓
+                </span>
+                <div className="trip-pace-summary__text">
+                  <span className="trip-pace-summary__kicker">Your pace is set to</span>
+                  <span className="trip-pace-summary__line">
+                    <span className="trip-pace-summary__emoji" aria-hidden="true">
+                      {selectedIntensityOption.emoji}
+                    </span>
+                    <strong className="trip-pace-summary__name">{selectedIntensityOption.title}</strong>
+                    <span className="trip-pace-summary__dash"> — </span>
+                    <span className="trip-pace-summary__detail">{selectedIntensityOption.body}</span>
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <p className="trip-pace-hint">Tap an option above to choose your pace.</p>
+            )}
+            {error && <p className="error">{error}</p>}
             <label className="trip-public-toggle">
               <input
                 type="checkbox"
@@ -676,20 +796,11 @@ function Trip() {
               />
               <span>Include this trip on Discover so others can view it.</span>
             </label>
-            <div className="trip-interests-actions form-actions">
+            <div className="form-actions">
               <button type="button" className="btn-secondary" onClick={goBack}>
                 Back
               </button>
-              <button
-                type="submit"
-                className="trip-btn-primary"
-                disabled={
-                  loading ||
-                  categoriesLoading ||
-                  !!categoriesError ||
-                  !sortedPlaceCategories.length
-                }
-              >
+              <button type="submit" className="trip-btn-primary" disabled={loading}>
                 {loading ? "Creating your trip…" : "Create trip"}
               </button>
             </div>

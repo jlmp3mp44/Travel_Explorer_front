@@ -4,6 +4,7 @@ import {
   addDayActivity,
   deletePublicTrip,
   deleteTripActivity,
+  downloadTripPdf,
   fetchMyTrips,
   postActivityRating,
   postTripRating,
@@ -40,6 +41,15 @@ import "../components/TripDetails.css";
 function formatAvg(n) {
   if (n == null || Number.isNaN(Number(n))) return null;
   return Number(n).toFixed(1);
+}
+
+function formatIntensityLabel(raw) {
+  if (raw == null || raw === "") return null;
+  const u = String(raw).toUpperCase();
+  if (u === "LOW") return "Relaxed";
+  if (u === "MEDIUM") return "Balanced";
+  if (u === "HIGH") return "Intense";
+  return null;
 }
 
 /** Move array item from `from` to `to` (inclusive indices). */
@@ -224,6 +234,25 @@ function TripDetails() {
   }, [trip?.id, navigate]);
 
   const heroTitle = useMemo(() => formatTripHeroTitle(trip), [trip]);
+
+  const intensityLabel = useMemo(() => {
+    if (!trip) return null;
+    const raw = trip.intensity ?? trip.tripIntensity ?? trip.trip_intensity;
+    return formatIntensityLabel(raw);
+  }, [trip]);
+
+  const handleDownloadPdf = useCallback(async () => {
+    if (!trip?.id) return;
+    setActionError("");
+    setBusy("pdf");
+    try {
+      await downloadTripPdf(trip.id);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not download PDF.");
+    } finally {
+      setBusy(null);
+    }
+  }, [trip?.id]);
 
   /** Cached ratings from localStorage (survives reload when GET omits userRating). */
   const storedRatings = useMemo(() => {
@@ -660,6 +689,15 @@ function TripDetails() {
         </button>
         <button
           type="button"
+          className="trip-pdf-btn"
+          onClick={() => handleDownloadPdf()}
+          disabled={!!busy}
+          title="Download itinerary as PDF"
+        >
+          {busy === "pdf" ? "Preparing PDF…" : "Download PDF"}
+        </button>
+        <button
+          type="button"
           className="trip-refresh-btn"
           onClick={() => refetchTrip()}
           disabled={refreshing || !!busy}
@@ -723,6 +761,14 @@ function TripDetails() {
                   </span>
                   {formatAvg(trip.averageRating) ?? "—"} · {trip.ratingCount ?? 0}{" "}
                   {trip.ratingCount === 1 ? "rating" : "ratings"}
+                </span>
+              )}
+              {intensityLabel && (
+                <span className="trip-meta-pill trip-meta-pill--pace" title="Trip pace">
+                  <span className="icon" aria-hidden="true">
+                    ⏱
+                  </span>
+                  {intensityLabel}
                 </span>
               )}
             </div>
@@ -937,20 +983,22 @@ function TripDetails() {
         </div>
 
         <div className="trip-map-column">
-          <TripRouteMap
-            trip={tripSnapshotForMap ?? trip}
-            displayDays={tripSnapshotForMap ? mapDisplayDays : displayDays}
-          />
-          <div className="trip-map-column__actions">
-            <button
-              type="button"
-              className="trip-map-update-btn"
-              onClick={handleUpdateRouteMap}
-              disabled={!!busy || !trip}
-              title="Reload the map with the latest stops (avoids slow reloads on every edit)"
-            >
-              Update map
-            </button>
+          <div className="trip-map-wrap">
+            <TripRouteMap
+              trip={tripSnapshotForMap ?? trip}
+              displayDays={tripSnapshotForMap ? mapDisplayDays : displayDays}
+            />
+            <div className="trip-map-column__actions trip-map-column__actions--overlay">
+              <button
+                type="button"
+                className="trip-map-update-btn"
+                onClick={handleUpdateRouteMap}
+                disabled={!!busy || !trip}
+                title="Reload the map with the latest stops (avoids slow reloads on every edit)"
+              >
+                Update map
+              </button>
+            </div>
           </div>
         </div>
       </div>

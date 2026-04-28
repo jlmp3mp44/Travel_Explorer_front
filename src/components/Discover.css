@@ -50,3 +50,90 @@
   margin-left: auto;
   margin-right: auto;
 }
+
+.discover-filters {
+  max-width: 640px;
+  margin: 0 auto 40px;
+  padding: 20px 22px 22px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(var(--brand-rgb), 0.12);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.06);
+}
+
+.discover-filters__title {
+  margin: 0 0 16px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-h, #2a2a3d);
+}
+
+.discover-filters__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.discover-filters__label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text, #6b6b80);
+}
+
+.discover-filters__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.discover-filters__btn {
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 700;
+  padding: 10px 20px;
+  border-radius: 0;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.discover-filters__btn--primary {
+  background: var(--brand, #5b4ce0);
+  color: #fff;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+.discover-filters__btn--primary:hover {
+  filter: brightness(1.05);
+}
+
+.discover-filters__btn--ghost {
+  background: transparent;
+  color: var(--text-h, #2a2a3d);
+  border-color: rgba(var(--brand-rgb), 0.25);
+}
+
+.discover-filters__btn--ghost:hover:not(:disabled) {
+  background: rgba(var(--brand-rgb), 0.06);
+}
+
+.discover-filters__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.trip-card-rating {
+  margin: 8px 0 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #b8860b;
+}
+
+.trip-card-rating-count {
+  font-weight: 600;
+  color: var(--text, #6b6b80);
+}

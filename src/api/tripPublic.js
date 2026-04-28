@@ -183,6 +183,109 @@ export async function postTripRating(tripId, userId, stars) {
 /**
  * POST — 204 No Content on success.
  */
+/**
+ * Builds query string for GET /api/public/trips (pagination, sort, filters).
+ * Repeats `categoryCodes` as separate query params when multiple.
+ */
+export function buildPublicTripsQueryString({
+  pageNumber = 0,
+  pageSize = 48,
+  sortBy,
+  sortOrder,
+  categoryCodes = [],
+  countryId,
+  countryName,
+  userId,
+} = {}) {
+  const q = new URLSearchParams();
+  q.set("pageNumber", String(pageNumber));
+  q.set("pageSize", String(pageSize));
+  if (sortBy != null && String(sortBy).trim() !== "") {
+    q.set("sortBy", String(sortBy).trim());
+  }
+  if (sortOrder != null && String(sortOrder).trim() !== "") {
+    q.set("sortOrder", String(sortOrder).trim());
+  }
+  const codes = Array.isArray(categoryCodes) ? categoryCodes : [];
+  for (const code of codes) {
+    const c = code != null ? String(code).trim() : "";
+    if (c) q.append("categoryCodes", c);
+  }
+  const name = countryName != null ? String(countryName).trim() : "";
+  const id = countryId != null ? String(countryId).trim() : "";
+  /** Prefer name when both sent: backend uses name only if id omitted; name match is often more reliable for city joins. */
+  if (name) {
+    q.set("countryName", name);
+  } else if (id) {
+    q.set("countryId", id);
+  }
+  if (userId != null && userId !== "") {
+    q.set("userId", String(userId));
+  }
+  return q.toString();
+}
+
+/**
+ * Paged public trip list. With filters, an empty page is valid; unfiltered empty may still error per API.
+ */
+export async function fetchPublicTripsList(options = {}) {
+  const qs = buildPublicTripsQueryString(options);
+  const res = await fetch(apiUrl(`/api/public/trips?${qs}`), {
+    credentials: "include",
+  });
+  const data = await parseResponseJson(res);
+  if (!res.ok) {
+    throw new Error(
+      errorMessageFromBody(
+        data,
+        res.status >= 500
+          ? "The server is busy right now. Please try again in a moment."
+          : "We couldn’t load trips. Please refresh the page."
+      )
+    );
+  }
+  const content = Array.isArray(data?.content) ? data.content : Array.isArray(data) ? data : [];
+  return { raw: data, content };
+}
+
+/**
+ * GET PDF export. Triggers browser download using `Content-Disposition` filename when present.
+ */
+export async function downloadTripPdf(tripId) {
+  const res = await fetch(apiUrl(`/api/public/trips/${encodeURIComponent(tripId)}/pdf`), {
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const data = await parseResponseJson(res);
+    throw new Error(errorMessageFromBody(data, "Could not download the PDF."));
+  }
+  const blob = await res.blob();
+  let filename = `trip-${tripId}.pdf`;
+  const cd = res.headers.get("Content-Disposition");
+  if (cd) {
+    const m = /filename\*?=(?:UTF-8''|")?([^";\n]+)/i.exec(cd);
+    if (m) {
+      try {
+        filename = decodeURIComponent(m[1].replace(/"/g, "").trim());
+      } catch {
+        filename = m[1].replace(/"/g, "").trim();
+      }
+    }
+  }
+  const url = URL.createObjectURL(blob);
+  try {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 export async function postActivityRating(tripId, activityId, userId, stars) {
   const res = await fetch(
     apiUrl(

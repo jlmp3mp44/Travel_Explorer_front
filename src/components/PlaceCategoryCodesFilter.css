@@ -1,0 +1,158 @@
+.place-cat-filter {
+  text-align: left;
+}
+
+.place-cat-filter--disabled {
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.place-cat-filter__lead {
+  margin: 0 0 12px;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--text, #5c5c70);
+}
+
+.place-cat-filter__hint {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text, #6b6b80);
+}
+
+.place-cat-filter__error {
+  margin: 0 0 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #b42318;
+}
+
+.place-cat-filter__scroll {
+  max-height: min(72vh, 720px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 4px;
+}
+
+.place-cat-filter__count {
+  margin: 12px 0 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--brand, #5b4ce0);
+}
+
+/* Reuse trip wizard chip look on light background */
+.place-cat-filter .interest-group {
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(var(--brand-rgb), 0.06);
+  border: 1px solid rgba(var(--brand-rgb), 0.15);
+}
+
+.place-cat-filter .interest-group--open {
+  border-color: rgba(var(--brand-rgb), 0.28);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+}
+
+.place-cat-filter .interest-group__header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  margin: 0;
+  min-height: 48px;
+  border: none !important;
+  font-size: 0.94rem;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: none !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  color: var(--text-h, #2a2a3d) !important;
+}
+
+.place-cat-filter .interest-group__header:hover:not(:disabled) {
+  background: rgba(var(--brand-rgb), 0.08) !important;
+}
+
+.place-cat-filter .interest-group__title {
+  flex: 1;
+  min-width: 0;
+}
+
+.place-cat-filter .interest-group__chevron {
+  flex-shrink: 0;
+  color: var(--text, #6b6b80);
+  font-size: 12px;
+}
+
+.place-cat-filter .interest-group__body-wrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.place-cat-filter .interest-group__body-wrap.is-open {
+  grid-template-rows: 1fr;
+}
+
+.place-cat-filter .interest-group__body-inner {
+  min-height: 0;
+  /* Allow full chip list to scroll inside open group (grid 0fr/1fr keeps animation) */
+  overflow: visible;
+}
+
+.place-cat-filter .interest-group__body-inner > .place-cat-filter__hint,
+.place-cat-filter .interest-group__body-inner > .place-cat-filter__error,
+.place-cat-filter .interest-group__body-inner > .interest-group__empty {
+  padding: 10px 16px 14px;
+}
+
+.place-cat-filter .interest-group__empty {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--text, #6b6b80);
+}
+
+.place-cat-filter .interest-group__chips-scroll {
+  max-height: none;
+  overflow: visible;
+  padding: 4px 12px 14px 14px;
+}
+
+.place-cat-filter .interest-group__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.place-cat-filter .interest-chip {
+  padding: 8px 14px !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(var(--brand-rgb), 0.25) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: var(--text-h, #2a2a3d) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  cursor: pointer;
+  width: auto !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+}
+
+.place-cat-filter .interest-chip:hover:not(:disabled) {
+  border-color: rgba(var(--brand-rgb), 0.45) !important;
+  background: rgba(var(--brand-rgb), 0.08) !important;
+}
+
+.place-cat-filter .interest-chip--selected {
+  border-color: rgba(var(--brand-rgb), 0.55) !important;
+  background: rgba(var(--brand-rgb), 0.16) !important;
+  color: var(--text-h, #1a1a2e) !important;
+}
