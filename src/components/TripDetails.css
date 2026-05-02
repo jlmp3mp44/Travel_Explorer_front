@@ -1169,3 +1169,208 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Change activity — anchored popover + transparent dismiss layer */
+.trip-change-panel-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2090;
+  background: transparent;
+}
+
+.trip-change-activity-panel {
+  position: fixed;
+  z-index: 2100;
+  width: min(300px, calc(100vw - 16px));
+  max-height: min(420px, calc(100vh - 24px));
+  display: flex;
+  flex-direction: column;
+  padding: 12px 12px 10px;
+  box-sizing: border-box;
+  background: var(--bg, #fff);
+  border: 1px solid rgba(var(--brand-rgb), 0.28);
+  box-shadow: 0 12px 40px rgba(30, 24, 60, 0.18);
+  text-align: left;
+}
+
+.trip-change-activity-panel__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.trip-change-activity-panel__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-h, #1a1a2e);
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.trip-change-activity-panel__close {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  background: rgba(var(--brand-rgb), 0.08);
+  color: var(--text-h, #1a1a2e);
+  font-size: 1.35rem;
+  line-height: 1;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.trip-change-activity-panel__close:hover:not(:disabled) {
+  background: rgba(var(--brand-rgb), 0.14);
+}
+
+.trip-change-activity-panel__close:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.trip-change-activity-panel__hint {
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--text, #5c5c70);
+  font-weight: 500;
+}
+
+.trip-change-activity-panel__suggest {
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(var(--brand-rgb), 0.4);
+  border-radius: 0;
+  background: var(--brand-gradient);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.88rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.trip-change-activity-panel__suggest:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.trip-change-activity-panel__suggest:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.trip-change-activity-panel__search {
+  margin-bottom: 8px;
+}
+
+.trip-change-activity-panel__label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-h, #1a1a2e);
+  margin-bottom: 6px;
+}
+
+.trip-change-activity-panel__search-row {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.trip-change-activity-panel__input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(var(--brand-rgb), 0.25);
+  border-radius: 0;
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+
+.trip-change-activity-panel__search-btn {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border: 1px solid rgba(var(--brand-rgb), 0.4);
+  border-radius: 0;
+  background: rgba(var(--brand-rgb), 0.1);
+  font-weight: 700;
+  font-size: 0.82rem;
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--text-h, #1a1a2e);
+}
+
+.trip-change-activity-panel__search-btn:hover:not(:disabled) {
+  background: rgba(var(--brand-rgb), 0.16);
+}
+
+.trip-change-activity-panel__search-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.trip-change-activity-panel__error {
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #8b2330;
+  line-height: 1.35;
+}
+
+.trip-change-activity-panel__results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  max-height: 200px;
+  border: 1px solid rgba(var(--brand-rgb), 0.15);
+}
+
+.trip-change-activity-panel__result-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-bottom: 1px solid rgba(var(--brand-rgb), 0.1);
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.trip-change-activity-panel__result-btn:last-child {
+  border-bottom: none;
+}
+
+.trip-change-activity-panel__result-btn:hover:not(:disabled) {
+  background: rgba(var(--brand-rgb), 0.06);
+}
+
+.trip-change-activity-panel__result-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.trip-change-activity-panel__result-name {
+  font-weight: 700;
+  font-size: 0.84rem;
+  color: var(--text-h, #1a1a2e);
+}
+
+.trip-change-activity-panel__result-addr {
+  font-size: 0.75rem;
+  color: var(--text, #5c5c70);
+  line-height: 1.35;
+}

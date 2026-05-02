@@ -41,10 +41,18 @@ export const AuthProvider = ({ children }) => {
     setUser(userInfo);
   };
 
-  const logout = () => {
+  const logout = useCallback(async () => {
+    try {
+      await fetch(apiUrl("/api/auth/signout"), {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {
+      /* clear local session even if sign-out request fails */
+    }
     setUser(null);
     localStorage.removeItem("userEmail");
-  };
+  }, []);
 
   return (
     <AuthContext.Provider

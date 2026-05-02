@@ -10,7 +10,9 @@ import {
   postTripRating,
   publicTripUrl,
   reorderDayActivities,
-  replaceActivity,
+  replaceActivitySmart,
+  replaceActivityWithPlace,
+  searchTripPlaces,
   updatePublicTrip,
 } from "../api/tripPublic";
 import {
@@ -63,6 +65,14 @@ function moveItem(arr, from, to) {
 
 function activityDndKey(dayId, index) {
   return `${dayId}-${index}`;
+}
+
+function placeSearchRowLabel(p) {
+  if (p == null) return { name: "Place", addr: "" };
+  const name =
+    p.name ?? p.title ?? p.placeName ?? p.displayName ?? p.label ?? "";
+  const addr = p.address ?? p.formattedAddress ?? p.vicinity ?? p.shortFormattedAddress ?? "";
+  return { name: String(name || "Unnamed place"), addr: String(addr || "") };
 }
 
 function ActivityTrashIcon() {
@@ -151,9 +161,17 @@ function TripDetails() {
 
   /** Full trip JSON from POST /trips — used when GET returns empty `days`. */
   const postCreateSnapshot = useMemo(() => {
-    const s = location.state?.tripSnapshot;
-    if (s && String(s.id) === String(id)) return s;
-    return readStoredTripSnapshot(id);
+    const fromNav = location.state?.tripSnapshot;
+    const fromNavUnwrapped = fromNav ? unwrapTripPayload(fromNav) : null;
+    if (fromNavUnwrapped?.id != null && String(fromNavUnwrapped.id) === String(id)) {
+      return fromNavUnwrapped;
+    }
+    const stored = readStoredTripSnapshot(id);
+    const storedUnwrapped = stored ? unwrapTripPayload(stored) : null;
+    if (storedUnwrapped?.id != null && String(storedUnwrapped.id) === String(id)) {
+      return storedUnwrapped;
+    }
+    return null;
   }, [id, location.state]);
 
   const [trip, setTrip] = useState(null);
@@ -164,10 +182,23 @@ function TripDetails() {
   const [busy, setBusy] = useState(null);
   const [dndDraggingKey, setDndDraggingKey] = useState(null);
   const [dndDropTargetKey, setDndDropTargetKey] = useState(null);
-  /** `{ activityId, mode?: 'replace' | 'delete' }` while choosing reason for replace or delete */
-  const [replaceModal, setReplaceModal] = useState(null);
-  const replaceModalDescId = useId();
-  const replaceModalFirstFocusRef = useRef(null);
+  /** `{ activityId }` while choosing reason for delete */
+  const [deleteActivityModal, setDeleteActivityModal] = useState(null);
+  const deleteModalDescId = useId();
+  const deleteModalFirstFocusRef = useRef(null);
+  /** Same modal as delete — pick reason, then `{ activityId, anchorEl }` closes and opens panel */
+  const [replaceActivityReasonModal, setReplaceActivityReasonModal] = useState(null);
+  const replaceReasonModalDescId = useId();
+  const replaceReasonModalFirstFocusRef = useRef(null);
+  /** Owner change-activity popover: `{ activityId, top, left }` in viewport px */
+  const [changeActivityPanel, setChangeActivityPanel] = useState(null);
+  const changePanelFirstFocusRef = useRef(null);
+  const [placeSearchInput, setPlaceSearchInput] = useState("");
+  const [placeSearchResults, setPlaceSearchResults] = useState([]);
+  const [placeSearchLoading, setPlaceSearchLoading] = useState(false);
+  const [changePanelError, setChangePanelError] = useState("");
+  /** Backend ActivityChangeReason — set from the pre-panel modal (same copy as delete). */
+  const [changeActivityReason, setChangeActivityReason] = useState("DONT_WANT_TO_GO");
   const [canEditVisibility, setCanEditVisibility] = useState(null);
   const [visibilityBusy, setVisibilityBusy] = useState(false);
   const [shareStatus, setShareStatus] = useState("");
@@ -282,7 +313,9 @@ function TripDetails() {
     setRefreshing(true);
     setLoadError("");
     try {
-      const res = await fetch(publicTripUrl(id, user?.id));
+      const res = await fetch(publicTripUrl(id, user?.id), {
+        credentials: "include",
+      });
       const data = await parseResponseJson(res);
       if (!res.ok) {
         setLoadError(friendlyPublicLoadError(res.status, "trip"));
@@ -408,77 +441,196 @@ function TripDetails() {
     [handleActivityDragEnd, handleReorderDay]
   );
 
-  const handleReplaceOrDeleteReason = useCallback(
+  const applyActivityChangeTripResponse = useCallback(
+    (activityId, data) => {
+      if (user?.id == null || trip?.id == null) return;
+      removePersistedActivityRating(user.id, trip.id, activityId);
+      setRatingStorageRev((n) => n + 1);
+      setLocalRatings((prev) => {
+        const activities = { ...prev.activities };
+        delete activities[activityId];
+        delete activities[String(activityId)];
+        return { ...prev, activities };
+      });
+      const merged = mergeTripWithPostResponse(unwrapTripPayload(data), postCreateSnapshot);
+      const cleared = stripActivityUserRatingForId(merged, activityId);
+      persistTripSnapshot(cleared);
+      setTrip(cleared);
+    },
+    [user?.id, trip?.id, postCreateSnapshot]
+  );
+
+  const handleDeleteActivityReason = useCallback(
     async (reason) => {
-      if (!trip?.id || user?.id == null || !replaceModal?.activityId) return;
-      const activityId = replaceModal.activityId;
-      const mode = replaceModal.mode ?? "replace";
+      if (!trip?.id || user?.id == null || !deleteActivityModal?.activityId) return;
+      const activityId = deleteActivityModal.activityId;
       setActionError("");
-      setBusy(mode === "delete" ? `del:${activityId}` : `replace:${activityId}`);
+      setBusy(`del:${activityId}`);
       try {
-        if (mode === "delete") {
-          const updated = await deleteTripActivity(trip.id, activityId, {
-            userId: user.id,
-            reason,
-          });
-          removePersistedActivityRating(user.id, trip.id, activityId);
-          setRatingStorageRev((n) => n + 1);
-          setLocalRatings((prev) => {
-            const activities = { ...prev.activities };
-            delete activities[activityId];
-            delete activities[String(activityId)];
-            return { ...prev, activities };
-          });
-          if (updated?.id) {
-            const merged = mergeTripWithPostResponse(updated, postCreateSnapshot);
-            persistTripSnapshot(merged);
-            setTrip(merged);
-          } else {
-            await refetchTrip();
-          }
+        const updated = await deleteTripActivity(trip.id, activityId, { reason });
+        removePersistedActivityRating(user.id, trip.id, activityId);
+        setRatingStorageRev((n) => n + 1);
+        setLocalRatings((prev) => {
+          const activities = { ...prev.activities };
+          delete activities[activityId];
+          delete activities[String(activityId)];
+          return { ...prev, activities };
+        });
+        if (updated?.id) {
+          const merged = mergeTripWithPostResponse(updated, postCreateSnapshot);
+          persistTripSnapshot(merged);
+          setTrip(merged);
         } else {
-          const data = await replaceActivity(trip.id, activityId, {
-            userId: user.id,
-            reason,
-          });
-          removePersistedActivityRating(user.id, trip.id, activityId);
-          setRatingStorageRev((n) => n + 1);
-          setLocalRatings((prev) => {
-            const activities = { ...prev.activities };
-            delete activities[activityId];
-            delete activities[String(activityId)];
-            return { ...prev, activities };
-          });
-          const merged = mergeTripWithPostResponse(unwrapTripPayload(data), postCreateSnapshot);
-          const cleared = stripActivityUserRatingForId(merged, activityId);
-          persistTripSnapshot(cleared);
-          setTrip(cleared);
+          await refetchTrip();
         }
-        setReplaceModal(null);
+        setDeleteActivityModal(null);
       } catch (err) {
-        setActionError(
-          err instanceof Error
-            ? err.message
-            : mode === "delete"
-              ? "Could not remove this stop."
-              : "Could not replace activity."
-        );
+        setActionError(err instanceof Error ? err.message : "Could not remove this stop.");
       } finally {
         setBusy(null);
       }
     },
-    [trip?.id, user?.id, replaceModal?.activityId, replaceModal?.mode, postCreateSnapshot, refetchTrip]
+    [trip?.id, user?.id, deleteActivityModal?.activityId, postCreateSnapshot, refetchTrip]
   );
 
-  const openReplaceModal = useCallback(
-    (activityId) => {
+  const closeChangeActivityPanel = useCallback(() => {
+    setChangeActivityPanel(null);
+    setPlaceSearchInput("");
+    setPlaceSearchResults([]);
+    setPlaceSearchLoading(false);
+    setChangePanelError("");
+    setChangeActivityReason("DONT_WANT_TO_GO");
+  }, []);
+
+  const computeChangePanelPosition = useCallback((anchorEl) => {
+    const rect = anchorEl.getBoundingClientRect();
+    const panelW = 300;
+    const margin = 8;
+    let left = rect.left;
+    if (left + panelW + margin > window.innerWidth) {
+      left = Math.max(margin, window.innerWidth - panelW - margin);
+    }
+    let top = rect.bottom + margin;
+    const estH = 320;
+    if (top + estH > window.innerHeight) {
+      top = Math.max(margin, rect.top - margin - estH);
+    }
+    return { top, left };
+  }, []);
+
+  /** Opens the same reason modal as delete; panel opens after a choice. */
+  const openReplaceActivityReasonModal = useCallback(
+    (activityId, anchorEl) => {
       if (user?.id == null) {
         navigate("/login", { state: { from: `/trip/${id}` } });
         return;
       }
-      setReplaceModal({ activityId, mode: "replace" });
+      if (!isTripOwner) {
+        setActionError("Only the trip owner can change stops.");
+        return;
+      }
+      setReplaceActivityReasonModal({ activityId, anchorEl });
     },
-    [user?.id, navigate, id]
+    [user, isTripOwner, navigate, id]
+  );
+
+  const confirmReplaceActivityReason = useCallback(
+    (reason) => {
+      if (!replaceActivityReasonModal) return;
+      const { activityId, anchorEl } = replaceActivityReasonModal;
+      const { top, left } = computeChangePanelPosition(anchorEl);
+      setChangeActivityReason(reason);
+      setChangeActivityPanel({ activityId, top, left });
+      setPlaceSearchInput("");
+      setPlaceSearchResults([]);
+      setChangePanelError("");
+      setReplaceActivityReasonModal(null);
+    },
+    [replaceActivityReasonModal, computeChangePanelPosition]
+  );
+
+  const handleSmartSuggest = useCallback(async () => {
+    if (!trip?.id || !changeActivityPanel?.activityId) return;
+    const activityId = changeActivityPanel.activityId;
+    setChangePanelError("");
+    setActionError("");
+    setBusy(`smart-replace:${activityId}`);
+    try {
+      const data = await replaceActivitySmart(trip.id, activityId, {
+        reason: changeActivityReason,
+      });
+      applyActivityChangeTripResponse(activityId, data);
+      closeChangeActivityPanel();
+    } catch (err) {
+      setChangePanelError(err instanceof Error ? err.message : "Could not suggest a replacement.");
+    } finally {
+      setBusy(null);
+    }
+  }, [
+    trip?.id,
+    changeActivityPanel?.activityId,
+    changeActivityReason,
+    applyActivityChangeTripResponse,
+    closeChangeActivityPanel,
+  ]);
+
+  const handlePlaceSearchSubmit = useCallback(async () => {
+    if (!trip?.id || !changeActivityPanel?.activityId) return;
+    const q = placeSearchInput.trim();
+    if (!q) {
+      setChangePanelError("Type a search query, then press Search.");
+      return;
+    }
+    setChangePanelError("");
+    setPlaceSearchLoading(true);
+    setBusy(`place-search:${changeActivityPanel.activityId}`);
+    try {
+      const list = await searchTripPlaces(trip.id, q);
+      setPlaceSearchResults(Array.isArray(list) ? list : []);
+      if (!list?.length) {
+        setChangePanelError("No places found. Try different words.");
+      }
+    } catch (err) {
+      setPlaceSearchResults([]);
+      setChangePanelError(err instanceof Error ? err.message : "Search failed.");
+    } finally {
+      setPlaceSearchLoading(false);
+      setBusy(null);
+    }
+  }, [trip?.id, changeActivityPanel?.activityId, placeSearchInput]);
+
+  const handlePickSearchPlace = useCallback(
+    async (place) => {
+      if (!trip?.id || !changeActivityPanel?.activityId || place == null) return;
+      const pid = place.id ?? place.placeId;
+      if (pid == null) {
+        setChangePanelError("This result has no place id.");
+        return;
+      }
+      const activityId = changeActivityPanel.activityId;
+      setChangePanelError("");
+      setActionError("");
+      setBusy(`place-apply:${activityId}`);
+      try {
+        const data = await replaceActivityWithPlace(trip.id, activityId, {
+          placeId: pid,
+          reason: changeActivityReason,
+        });
+        applyActivityChangeTripResponse(activityId, data);
+        closeChangeActivityPanel();
+      } catch (err) {
+        setChangePanelError(err instanceof Error ? err.message : "Could not apply this place.");
+      } finally {
+        setBusy(null);
+      }
+    },
+    [
+      trip?.id,
+      changeActivityPanel?.activityId,
+      changeActivityReason,
+      applyActivityChangeTripResponse,
+      closeChangeActivityPanel,
+    ]
   );
 
   const openDeleteActivityModal = useCallback(
@@ -487,7 +639,7 @@ function TripDetails() {
         navigate("/login", { state: { from: `/trip/${id}` } });
         return;
       }
-      setReplaceModal({ activityId, mode: "delete" });
+      setDeleteActivityModal({ activityId });
     },
     [user?.id, navigate, id]
   );
@@ -586,26 +738,60 @@ function TripDetails() {
   }, [trip, user]);
 
   useEffect(() => {
-    if (!replaceModal) return;
-    const focusEl = replaceModalFirstFocusRef.current;
+    if (!deleteActivityModal) return;
+    const focusEl = deleteModalFirstFocusRef.current;
     const raf = window.requestAnimationFrame(() => {
       focusEl?.focus();
     });
     const onKey = (e) => {
-      if (e.key === "Escape") setReplaceModal(null);
+      if (e.key === "Escape") setDeleteActivityModal(null);
     };
     document.addEventListener("keydown", onKey);
     return () => {
       window.cancelAnimationFrame(raf);
       document.removeEventListener("keydown", onKey);
     };
-  }, [replaceModal]);
+  }, [deleteActivityModal]);
+
+  useEffect(() => {
+    if (!replaceActivityReasonModal) return;
+    const focusEl = replaceReasonModalFirstFocusRef.current;
+    const raf = window.requestAnimationFrame(() => {
+      focusEl?.focus();
+    });
+    const onKey = (e) => {
+      if (e.key === "Escape") setReplaceActivityReasonModal(null);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [replaceActivityReasonModal]);
+
+  useEffect(() => {
+    if (!changeActivityPanel) return;
+    const focusEl = changePanelFirstFocusRef.current;
+    const raf = window.requestAnimationFrame(() => {
+      focusEl?.focus();
+    });
+    const onKey = (e) => {
+      if (e.key === "Escape") closeChangeActivityPanel();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [changeActivityPanel, closeChangeActivityPanel]);
 
   useEffect(() => {
     let cancelled = false;
 
     const fetchOnce = async () => {
-      const res = await fetch(publicTripUrl(id, user?.id));
+      const res = await fetch(publicTripUrl(id, user?.id), {
+        credentials: "include",
+      });
       const data = await parseResponseJson(res);
       if (!res.ok) {
         return { ok: false, error: friendlyPublicLoadError(res.status, "trip"), trip: null };
@@ -920,19 +1106,15 @@ function TripDetails() {
                                   </button>
                                 </div>
                               )}
-                              {activity.id != null && (
+                              {isTripOwner && activity.id != null && (
                                 <button
                                   type="button"
                                   className="trip-activity-replace-btn"
-                                  onClick={() => openReplaceModal(activity.id)}
+                                  onClick={(e) => openReplaceActivityReasonModal(activity.id, e.currentTarget)}
                                   disabled={!!busy}
-                                  title={
-                                    user?.id != null
-                                      ? "Swap this stop for another place (saved for you on shared trips)"
-                                      : "Sign in to personalize this stop"
-                                  }
+                                  title="Change this stop — smart suggestion or search"
                                 >
-                                  Replace stop
+                                  Change activity
                                 </button>
                               )}
                               {showAvg && (
@@ -1003,33 +1185,33 @@ function TripDetails() {
         </div>
       </div>
 
-      {replaceModal ? (
+      {deleteActivityModal ? (
         <div
           className="trip-replace-modal-backdrop"
           role="presentation"
-          onClick={() => !busy && setReplaceModal(null)}
+          onClick={() => !busy && setDeleteActivityModal(null)}
         >
           <div
             className="trip-replace-modal"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="trip-replace-modal-title"
-            aria-describedby={replaceModalDescId}
+            aria-labelledby="trip-delete-activity-modal-title"
+            aria-describedby={deleteModalDescId}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 id="trip-replace-modal-title" className="trip-replace-modal__title">
-              {replaceModal.mode === "delete" ? "Why remove this stop?" : "Why replace this stop?"}
+            <h2 id="trip-delete-activity-modal-title" className="trip-replace-modal__title">
+              Why remove this stop?
             </h2>
-            <p id={replaceModalDescId} className="trip-replace-modal__lead">
+            <p id={deleteModalDescId} className="trip-replace-modal__lead">
               Your choice is saved only for you — the shared trip stays the same for others.
             </p>
             <div className="trip-replace-modal__actions">
               <button
-                ref={replaceModalFirstFocusRef}
+                ref={deleteModalFirstFocusRef}
                 type="button"
                 className="trip-replace-modal__choice"
                 disabled={!!busy}
-                onClick={() => handleReplaceOrDeleteReason("WAS_HERE")}
+                onClick={() => handleDeleteActivityReason("WAS_HERE")}
               >
                 I was here
               </button>
@@ -1037,7 +1219,7 @@ function TripDetails() {
                 type="button"
                 className="trip-replace-modal__choice trip-replace-modal__choice--secondary"
                 disabled={!!busy}
-                onClick={() => handleReplaceOrDeleteReason("DONT_WANT_TO_GO")}
+                onClick={() => handleDeleteActivityReason("DONT_WANT_TO_GO")}
               >
                 I don’t want to go here
               </button>
@@ -1046,12 +1228,168 @@ function TripDetails() {
               type="button"
               className="trip-replace-modal__cancel"
               disabled={!!busy}
-              onClick={() => setReplaceModal(null)}
+              onClick={() => setDeleteActivityModal(null)}
             >
               Cancel
             </button>
           </div>
         </div>
+      ) : null}
+
+      {replaceActivityReasonModal ? (
+        <div
+          className="trip-replace-modal-backdrop"
+          role="presentation"
+          onClick={() => !busy && setReplaceActivityReasonModal(null)}
+        >
+          <div
+            className="trip-replace-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="trip-replace-activity-reason-modal-title"
+            aria-describedby={replaceReasonModalDescId}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="trip-replace-activity-reason-modal-title" className="trip-replace-modal__title">
+              Why remove this stop?
+            </h2>
+            <p id={replaceReasonModalDescId} className="trip-replace-modal__lead">
+              Your choice is saved only for you — the shared trip stays the same for others.
+            </p>
+            <div className="trip-replace-modal__actions">
+              <button
+                ref={replaceReasonModalFirstFocusRef}
+                type="button"
+                className="trip-replace-modal__choice"
+                disabled={!!busy}
+                onClick={() => confirmReplaceActivityReason("WAS_HERE")}
+              >
+                I was here
+              </button>
+              <button
+                type="button"
+                className="trip-replace-modal__choice trip-replace-modal__choice--secondary"
+                disabled={!!busy}
+                onClick={() => confirmReplaceActivityReason("DONT_WANT_TO_GO")}
+              >
+                I don’t want to go here
+              </button>
+            </div>
+            <button
+              type="button"
+              className="trip-replace-modal__cancel"
+              disabled={!!busy}
+              onClick={() => setReplaceActivityReasonModal(null)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {changeActivityPanel ? (
+        <>
+          <div
+            className="trip-change-panel-backdrop"
+            role="presentation"
+            aria-hidden="true"
+            onClick={() => !busy && closeChangeActivityPanel()}
+          />
+          <div
+            className="trip-change-activity-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="trip-change-activity-title"
+            style={{
+              top: changeActivityPanel.top,
+              left: changeActivityPanel.left,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="trip-change-activity-panel__head">
+              <h2 id="trip-change-activity-title" className="trip-change-activity-panel__title">
+                Change this stop
+              </h2>
+              <button
+                type="button"
+                className="trip-change-activity-panel__close"
+                disabled={!!busy}
+                onClick={closeChangeActivityPanel}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <p className="trip-change-activity-panel__hint">
+              Suggest picks the next best match for you. Or search, then choose a place from the list.
+            </p>
+            <button
+              ref={changePanelFirstFocusRef}
+              type="button"
+              className="trip-change-activity-panel__suggest"
+              disabled={!!busy || placeSearchLoading}
+              onClick={() => handleSmartSuggest()}
+            >
+              {busy === `smart-replace:${changeActivityPanel.activityId}`
+                ? "Working…"
+                : "Suggest for me"}
+            </button>
+            <div className="trip-change-activity-panel__search">
+              <label className="trip-change-activity-panel__label" htmlFor="trip-place-search-input">
+                Search manually
+              </label>
+              <div className="trip-change-activity-panel__search-row">
+                <input
+                  id="trip-place-search-input"
+                  type="search"
+                  className="trip-change-activity-panel__input"
+                  value={placeSearchInput}
+                  onChange={(e) => setPlaceSearchInput(e.target.value)}
+                  placeholder="e.g. vegan restaurant near museum"
+                  disabled={!!busy || placeSearchLoading}
+                  autoComplete="off"
+                />
+                <button
+                  type="button"
+                  className="trip-change-activity-panel__search-btn"
+                  disabled={!!busy || placeSearchLoading || !placeSearchInput.trim()}
+                  onClick={() => handlePlaceSearchSubmit()}
+                >
+                  {placeSearchLoading ? "…" : "Search"}
+                </button>
+              </div>
+            </div>
+            {changePanelError ? (
+              <p className="trip-change-activity-panel__error" role="alert">
+                {changePanelError}
+              </p>
+            ) : null}
+            <ul
+              className="trip-change-activity-panel__results"
+              aria-label="Search results"
+            >
+              {placeSearchResults.map((p, idx) => {
+                const key = p.id ?? p.placeId ?? idx;
+                const { name, addr } = placeSearchRowLabel(p);
+                return (
+                  <li key={String(key)}>
+                    <button
+                      type="button"
+                      className="trip-change-activity-panel__result-btn"
+                      disabled={!!busy}
+                      onClick={() => handlePickSearchPlace(p)}
+                    >
+                      <span className="trip-change-activity-panel__result-name">{name}</span>
+                      {addr ? (
+                        <span className="trip-change-activity-panel__result-addr">{addr}</span>
+                      ) : null}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </>
       ) : null}
     </div>
   );

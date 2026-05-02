@@ -25,7 +25,7 @@ function Login() {
     setError("");
     const user = usernameInput.trim();
     if (!user) {
-      setError("Enter your username.");
+      setError("Enter your email or username.");
       return;
     }
     if (!password) {
@@ -73,11 +73,12 @@ function Login() {
 
         <form className="auth-form" onSubmit={handleSubmit} noValidate>
           <div className="form-group">
-            <label htmlFor="login-username">Username</label>
+            <label htmlFor="login-username">Email or username</label>
             <input
               id="login-username"
               type="text"
               autoComplete="username"
+              placeholder="you@example.com or your username"
               value={usernameInput}
               onChange={(e) => setUsernameInput(e.target.value)}
               required

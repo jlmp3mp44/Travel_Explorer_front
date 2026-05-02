@@ -19,6 +19,7 @@ import {
   placeInterestId,
   placeInterestLabel,
 } from "../utils/geoApi";
+import { unwrapTripPayload } from "../utils/tripItinerary";
 import SearchableSelect from "../components/SearchableSelect";
 import "../components/Trip.css";
 
@@ -367,6 +368,7 @@ function Trip() {
     try {
       const res = await fetch(apiUrl("/api/public/trips"), {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(tripData),
       });
@@ -378,13 +380,19 @@ function Trip() {
         return;
       }
 
+      const trip = unwrapTripPayload(data);
+      if (trip?.id == null) {
+        setError("Trip was created but the response had no id. Please refresh My trips.");
+        return;
+      }
+
       try {
-        window.localStorage.setItem(`tripSnapshot:${data.id}`, JSON.stringify(data));
+        window.localStorage.setItem(`tripSnapshot:${trip.id}`, JSON.stringify(trip));
       } catch {
         /* storage may be unavailable; navigation state still covers the common case */
       }
 
-      navigate(`/trip/${data.id}`, { state: { tripSnapshot: data } });
+      navigate(`/trip/${trip.id}`, { state: { tripSnapshot: trip } });
     } catch (err) {
       console.error(err);
       setError(friendlyNetworkError(err));

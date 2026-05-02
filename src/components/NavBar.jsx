@@ -14,12 +14,11 @@ function Navbar() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     const confirmLogout = window.confirm("Are you sure you want to sign out?");
-    if (confirmLogout) {
-      logout();
-      navigate("/");
-    }
+    if (!confirmLogout) return;
+    await logout();
+    navigate("/");
   };
 
   return (

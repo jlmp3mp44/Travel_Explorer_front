@@ -6,7 +6,15 @@
 function normalizePlace(p) {
   if (p == null) return null;
   if (typeof p === "string") return { title: p };
-  const title = p.title ?? p.name ?? p.placeName ?? p.label ?? p.placeTitle ?? "";
+  const title =
+    p.title ??
+    p.name ??
+    p.placeName ??
+    p.label ??
+    p.placeTitle ??
+    p.displayName ??
+    p.text ??
+    "";
   if (!title) return null;
   return { title: String(title) };
 }
@@ -33,6 +41,20 @@ function pickNumericId(v) {
   return Number.isFinite(n) ? n : undefined;
 }
 
+/** Activity id may be Long or string (e.g. UUID) from the API. */
+function pickActivityId(v) {
+  if (v == null || v === "") return undefined;
+  if (typeof v === "string") {
+    const t = v.trim();
+    if (!t) return undefined;
+    const n = Number(t);
+    if (Number.isFinite(n) && String(n) === t) return n;
+    return t;
+  }
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  return undefined;
+}
+
 function normalizeUserPreference(raw) {
   if (!raw || typeof raw !== "object") return null;
   const reason = raw.reason ?? raw.changeReason;
@@ -44,7 +66,7 @@ function normalizeUserPreference(raw) {
 
 function normalizeActivity(act) {
   if (!act) return null;
-  const id = pickNumericId(act.id);
+  const id = pickActivityId(act.id);
   const sortOrder = act.sortOrder != null ? Number(act.sortOrder) : undefined;
   const averageRating =
     act.averageRating != null ? Number(act.averageRating) : undefined;
@@ -191,6 +213,21 @@ function normalizeDay(day) {
   return { id: dayId, date: date ? String(date) : "", activities };
 }
 
+/** Raw days array — hoisted `function` so `unwrapTripPayload` can use it. */
+function extractTripDaysRaw(trip) {
+  if (!trip || typeof trip !== "object") return [];
+  const arr =
+    trip.days ??
+    trip.tripDays ??
+    trip.trip_days ??
+    trip.itinerary ??
+    trip.dayPlans ??
+    trip.day_plans ??
+    trip.schedule ??
+    trip.plan;
+  return Array.isArray(arr) ? arr : [];
+}
+
 /**
  * API may wrap the trip: `{ "data": { ... } }`, `{ "trip": {...} }`, Spring `content`, etc.
  */
@@ -198,7 +235,13 @@ export function unwrapTripPayload(raw) {
   if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
     return raw;
   }
-  if (raw.id != null && (raw.startDate != null || raw.endDate != null || raw.days != null)) {
+  if (
+    raw.id != null &&
+    (raw.startDate != null ||
+      raw.endDate != null ||
+      raw.days != null ||
+      extractTripDaysRaw(raw).length > 0)
+  ) {
     return raw;
   }
   const nested =
@@ -217,15 +260,15 @@ export function unwrapTripPayload(raw) {
 }
 
 /**
- * GET /api/public/trips/:id often returns `"days": []` while the POST /trips response
- * included full `days`. When ids match and GET has no days, copy `days` from the create response.
+ * GET /api/public/trips/:id often returns empty itinerary while POST /trips returned it.
+ * When ids match and GET has no days, copy days from the create response (any known days key).
  */
 export function mergeTripWithPostResponse(getTrip, postTrip) {
   if (!getTrip || typeof getTrip !== "object") return getTrip;
   if (!postTrip || typeof postTrip !== "object") return getTrip;
   if (String(postTrip.id) !== String(getTrip.id)) return getTrip;
-  const getDays = Array.isArray(getTrip.days) ? getTrip.days : [];
-  const postDays = Array.isArray(postTrip.days) ? postTrip.days : [];
+  const getDays = extractTripDaysRaw(getTrip);
+  const postDays = extractTripDaysRaw(postTrip);
   if (getDays.length === 0 && postDays.length > 0) {
     return { ...getTrip, days: postDays };
   }
@@ -271,22 +314,14 @@ export function formatTripHeroTitle(trip) {
  * Returns normalized days array, or [] if nothing usable.
  */
 export function normalizeTripDays(trip) {
-  if (!trip || typeof trip !== "object") return [];
-  const raw =
-    trip.days ??
-    trip.tripDays ??
-    trip.trip_days ??
-    trip.itinerary ??
-    trip.dayPlans ??
-    trip.day_plans ??
-    trip.schedule ??
-    trip.plan;
-  if (!Array.isArray(raw)) return [];
+  const raw = extractTripDaysRaw(trip);
+  if (raw.length === 0) return [];
   return raw.map(normalizeDay).filter(Boolean);
 }
 
 function activityHasDetail(a) {
   if (!a) return false;
+  if (a.id != null && String(a.id).trim() !== "") return true;
   if (Array.isArray(a.places) && a.places.some((p) => p && String(p.title ?? "").trim())) {
     return true;
   }
@@ -301,13 +336,22 @@ function dayHasDetail(d) {
   return Array.isArray(d?.activities) && d.activities.some(activityHasDetail);
 }
 
+function dayHasActivities(d) {
+  return Array.isArray(d?.activities) && d.activities.length > 0;
+}
+
 /**
- * Real itinerary rows only — no filler copy when the API omits activities.
+ * Prefer real rows (places/times/ids). If the API returns activities without parsed titles yet,
+ * still show days that contain activities so new trips are not blank after create.
  */
 export function resolveTripDaysForDisplay(trip) {
   const normalized = normalizeTripDays(trip);
-  const hasReal = normalized.length > 0 && normalized.some(dayHasDetail);
-  if (hasReal) {
+  if (normalized.length === 0) {
+    return { days: [], isPlaceholder: true };
+  }
+  const hasRich = normalized.some(dayHasDetail);
+  const hasActivities = normalized.some(dayHasActivities);
+  if (hasRich || hasActivities) {
     return { days: normalized, isPlaceholder: false };
   }
   return { days: [], isPlaceholder: true };

@@ -16,6 +16,7 @@ export async function reorderDayActivities(tripId, dayId, activityIds) {
     apiUrl(`/api/public/trips/${encodeURIComponent(tripId)}/days/${encodeURIComponent(dayId)}/activities/order`),
     {
       method: "PUT",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(activityIds),
     }
@@ -39,22 +40,79 @@ export function publicTripUrl(tripId, userId) {
 }
 
 /**
- * POST — body: { userId, reason: "WAS_HERE" | "DONT_WANT_TO_GO" } — returns full trip (same shape as GET by id).
+ * POST — smart replacement (reserve pool / re-rank). Session cookie; trip owner only.
+ * Body optional: `{ reason }` — backend `ActivityChangeReason`: WAS_HERE | DONT_WANT_TO_GO.
+ * Returns full trip (same shape as GET by id).
  */
-export async function replaceActivity(tripId, activityId, { userId, reason }) {
+export async function replaceActivitySmart(tripId, activityId, { reason } = {}) {
+  const body = {};
+  if (reason != null && String(reason).trim() !== "") {
+    body.reason = String(reason).trim();
+  }
   const res = await fetch(
     apiUrl(
-      `/api/public/trips/${encodeURIComponent(tripId)}/activities/${encodeURIComponent(activityId)}/replace`
+      `/api/public/trips/${encodeURIComponent(tripId)}/activities/${encodeURIComponent(activityId)}/replace-smart`
     ),
     {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, reason }),
+      body: JSON.stringify(body),
     }
   );
   const data = await parseResponseJson(res);
   if (!res.ok) {
-    throw new Error(errorMessageFromBody(data, "Could not replace this activity."));
+    throw new Error(errorMessageFromBody(data, "Could not suggest a replacement."));
+  }
+  return data;
+}
+
+/**
+ * GET — free-text place search for this trip’s geography. Session cookie; owner only.
+ * @returns {Promise<Array>} list of place objects (PlaceResponse shape from backend).
+ */
+export async function searchTripPlaces(tripId, q) {
+  const query = String(q ?? "").trim();
+  const params = new URLSearchParams({ q: query });
+  const res = await fetch(
+    apiUrl(
+      `/api/public/trips/${encodeURIComponent(tripId)}/places/search?${params.toString()}`
+    ),
+    { credentials: "include" }
+  );
+  const data = await parseResponseJson(res);
+  if (!res.ok) {
+    throw new Error(errorMessageFromBody(data, "Search failed."));
+  }
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.content)) return data.content;
+  if (Array.isArray(data?.places)) return data.places;
+  return [];
+}
+
+/**
+ * POST — set a specific place on the activity. Session cookie; owner only.
+ * Body: { placeId, reason? }
+ */
+export async function replaceActivityWithPlace(tripId, activityId, { placeId, reason }) {
+  const body = { placeId };
+  if (reason != null && String(reason).trim() !== "") {
+    body.reason = String(reason).trim();
+  }
+  const res = await fetch(
+    apiUrl(
+      `/api/public/trips/${encodeURIComponent(tripId)}/activities/${encodeURIComponent(activityId)}/replace-with-place`
+    ),
+    {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  );
+  const data = await parseResponseJson(res);
+  if (!res.ok) {
+    throw new Error(errorMessageFromBody(data, "Could not apply this place."));
   }
   return data;
 }
@@ -94,10 +152,11 @@ export async function updatePublicTrip(tripId, patch) {
 }
 
 /**
- * DELETE — remove an activity (`ActivityManualEditRequest`: reason; `userId` for current user). Session required for owners.
+ * DELETE — remove an activity. Body: `ActivityManualEditRequest` with required `reason`
+ * (`ActivityChangeReason`: WAS_HERE | DONT_WANT_TO_GO). Session cookie required for owners.
  * Returns updated trip JSON when present; otherwise `null` (e.g. 204).
  */
-export async function deleteTripActivity(tripId, activityId, { userId, reason }) {
+export async function deleteTripActivity(tripId, activityId, { reason }) {
   const res = await fetch(
     apiUrl(
       `/api/public/trips/${encodeURIComponent(tripId)}/activities/${encodeURIComponent(activityId)}`
@@ -106,7 +165,7 @@ export async function deleteTripActivity(tripId, activityId, { userId, reason })
       method: "DELETE",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, reason }),
+      body: JSON.stringify({ reason }),
     }
   );
   const data = await parseResponseJson(res);
@@ -169,6 +228,7 @@ export async function fetchMyTrips(ownerUserId) {
 export async function postTripRating(tripId, userId, stars) {
   const res = await fetch(apiUrl(`/api/public/trips/${encodeURIComponent(tripId)}/ratings`), {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ userId, stars }),
   });
@@ -293,6 +353,7 @@ export async function postActivityRating(tripId, activityId, userId, stars) {
     ),
     {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId, stars }),
     }
