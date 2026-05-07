@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { tripOwnerDisplayName, tripOwnerId } from "../utils/tripDisplay";
 import { fetchPublicTripsList } from "../api/tripPublic";
 import { friendlyNetworkError } from "../utils/friendlyErrors";
 import TripListSkeleton from "../components/skeletons/TripListSkeleton";
@@ -24,6 +26,7 @@ function formatAvg(n) {
 
 function BestTrips() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -106,6 +109,23 @@ function BestTrips() {
                     >
                       <div className="trip-card-inner">
                         <h3 className="trip-card-title">{trip.title}</h3>
+                        {(() => {
+                          const oid = tripOwnerId(trip);
+                          const name = tripOwnerDisplayName(trip);
+                          if (!name || oid == null) return null;
+                          if (user?.id != null && String(user.id) === String(oid)) return null;
+                          return (
+                            <p className="trip-card-owner">
+                              <Link
+                                className="trip-card-owner-link"
+                                to={`/users/${oid}`}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {name}
+                              </Link>
+                            </p>
+                          );
+                        })()}
                         {(trip.desc || trip.description) && (
                           <p className="trip-card-preview">{trip.desc || trip.description}</p>
                         )}

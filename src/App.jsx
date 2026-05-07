@@ -12,6 +12,8 @@ import Profile from "./pages/Profile";
 import Discover from "./pages/Discover";
 import BestTrips from "./pages/BestTrips";
 import MyTrips from "./pages/MyTrips";
+import UserPublicTrips from "./pages/UserPublicTrips";
+import TripPrint from "./pages/TripPrint";
 import TripDeletedFlashBanner from "./components/TripDeletedFlashBanner";
 
 function App() {
@@ -35,6 +37,8 @@ function App() {
             <Route path="/trip" element={<Trip />} />
             <Route path="/result" element={<Result />} />
             <Route path="/trip/:id" element={<TripDetails />} />
+            <Route path="/trip/:id/print" element={<TripPrint />} />
+            <Route path="/users/:userId" element={<UserPublicTrips />} />
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
             <Route path="/profile" element={<Profile />} />

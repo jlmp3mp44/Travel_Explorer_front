@@ -67,6 +67,44 @@
   cursor: not-allowed;
 }
 
+.trip-hero-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+}
+
+.trip-hero-categories li {
+  padding: 5px 11px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  background: rgba(var(--brand-rgb), 0.09);
+  border: 1px solid rgba(var(--brand-rgb), 0.18);
+  color: var(--text-h, #1a1a2e);
+}
+
+.trip-hero-owner {
+  margin: 12px 0 0;
+  font-size: 0.88rem;
+  color: rgba(26, 26, 46, 0.72);
+  font-weight: 500;
+}
+
+.trip-hero-owner a {
+  font-weight: 700;
+  color: var(--brand);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(var(--brand-rgb), 0.3);
+}
+
+.trip-hero-owner a:hover {
+  color: var(--brand-deep);
+  border-bottom-color: rgba(var(--brand-rgb), 0.5);
+}
+
 .trip-delete-whole-hint {
   margin: -4px 0 14px;
   padding: 10px 14px;

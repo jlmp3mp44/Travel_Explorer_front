@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { tripOwnerDisplayName, tripOwnerId } from "../utils/tripDisplay";
 import { useAuth } from "../context/AuthContext";
 import { apiUrl } from "../config/api";
 import { friendlyNetworkError, parseResponseJson } from "../utils/friendlyErrors";
@@ -222,6 +223,23 @@ function Home() {
                   >
                     <div className="trip-card-inner">
                       <h3 className="trip-card-title">{trip.title}</h3>
+                      {(() => {
+                        const oid = tripOwnerId(trip);
+                        const name = tripOwnerDisplayName(trip);
+                        if (!name || oid == null) return null;
+                        if (user?.id != null && String(user.id) === String(oid)) return null;
+                        return (
+                          <p className="trip-card-owner">
+                            <Link
+                              className="trip-card-owner-link"
+                              to={`/users/${oid}`}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {name}
+                            </Link>
+                          </p>
+                        );
+                      })()}
                       {(trip.desc || trip.description) && (
                         <p className="trip-card-preview">
                           {trip.desc || trip.description}

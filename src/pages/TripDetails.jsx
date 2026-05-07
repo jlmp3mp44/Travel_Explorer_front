@@ -4,7 +4,6 @@ import {
   addDayActivity,
   deletePublicTrip,
   deleteTripActivity,
-  downloadTripPdf,
   fetchMyTrips,
   postActivityRating,
   postTripRating,
@@ -13,6 +12,7 @@ import {
   replaceActivitySmart,
   replaceActivityWithPlace,
   searchTripPlaces,
+  addTripActivityAuto,
   updatePublicTrip,
 } from "../api/tripPublic";
 import {
@@ -30,6 +30,11 @@ import {
 } from "../utils/tripItinerary";
 import { useAuth } from "../context/AuthContext";
 import { isTripOwnerFromPayload } from "../utils/tripOwnership";
+import {
+  extractTripCategoryLabels,
+  tripOwnerDisplayName,
+  tripOwnerId,
+} from "../utils/tripDisplay";
 import { extractTripUserRating } from "../utils/ratings";
 import {
   persistUserTripRating,
@@ -208,6 +213,13 @@ function TripDetails() {
   const [ratingStorageRev, setRatingStorageRev] = useState(0);
   /** Inline two-step delete (no blocking browser dialog). */
   const [wholeTripDeleteConfirm, setWholeTripDeleteConfirm] = useState(false);
+  /** Add stop: floating panel with suggest + search (no reason prompt; backend defaults reason). */
+  const [addActivityPanel, setAddActivityPanel] = useState(null);
+  const addPanelFirstFocusRef = useRef(null);
+  const [addPlaceSearchInput, setAddPlaceSearchInput] = useState("");
+  const [addPlaceSearchResults, setAddPlaceSearchResults] = useState([]);
+  const [addPlaceSearchLoading, setAddPlaceSearchLoading] = useState(false);
+  const [addPanelError, setAddPanelError] = useState("");
 
   const displayDays = useMemo(() => {
     if (!trip) return [];
@@ -272,17 +284,14 @@ function TripDetails() {
     return formatIntensityLabel(raw);
   }, [trip]);
 
-  const handleDownloadPdf = useCallback(async () => {
+  const tripCategoryLabels = useMemo(() => extractTripCategoryLabels(trip), [trip]);
+  const tripOwnerName = useMemo(() => tripOwnerDisplayName(trip), [trip]);
+  const tripOwnerProfileId = useMemo(() => tripOwnerId(trip), [trip]);
+
+  /** Styled itinerary in a new tab; `?auto=1` opens the browser print / Save as PDF dialog. */
+  const handleDownloadPdf = useCallback(() => {
     if (!trip?.id) return;
-    setActionError("");
-    setBusy("pdf");
-    try {
-      await downloadTripPdf(trip.id);
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Could not download PDF.");
-    } finally {
-      setBusy(null);
-    }
+    window.open(`/trip/${trip.id}/print?auto=1`, "_blank", "noopener,noreferrer");
   }, [trip?.id]);
 
   /** Cached ratings from localStorage (survives reload when GET omits userRating). */
@@ -518,6 +527,116 @@ function TripDetails() {
     return { top, left };
   }, []);
 
+  const closeAddActivityPanel = useCallback(() => {
+    setAddActivityPanel(null);
+    setAddPlaceSearchInput("");
+    setAddPlaceSearchResults([]);
+    setAddPlaceSearchLoading(false);
+    setAddPanelError("");
+  }, []);
+
+  const openAddActivityPanel = useCallback(
+    (dayId, anchorEl) => {
+      if (user?.id == null) {
+        navigate("/login", { state: { from: `/trip/${id}` } });
+        return;
+      }
+      if (!isTripOwner) {
+        setActionError("Only the trip owner can add stops.");
+        return;
+      }
+      setReplaceActivityReasonModal(null);
+      closeChangeActivityPanel();
+      const { top, left } = computeChangePanelPosition(anchorEl);
+      setAddActivityPanel({ dayId, top, left });
+      setAddPlaceSearchInput("");
+      setAddPlaceSearchResults([]);
+      setAddPanelError("");
+    },
+    [user?.id, isTripOwner, navigate, id, closeChangeActivityPanel, computeChangePanelPosition]
+  );
+
+  const handleAddPlaceSearchSubmit = useCallback(async () => {
+    if (!trip?.id || !addActivityPanel?.dayId) return;
+    const q = addPlaceSearchInput.trim();
+    if (!q) {
+      setAddPanelError("Type a search query, then press Search.");
+      return;
+    }
+    setAddPanelError("");
+    setAddPlaceSearchLoading(true);
+    setBusy(`add-search:${addActivityPanel.dayId}`);
+    try {
+      const list = await searchTripPlaces(trip.id, q);
+      setAddPlaceSearchResults(Array.isArray(list) ? list : []);
+      if (!list?.length) {
+        setAddPanelError("No places found. Try different words.");
+      }
+    } catch (err) {
+      setAddPlaceSearchResults([]);
+      setAddPanelError(err instanceof Error ? err.message : "Search failed.");
+    } finally {
+      setAddPlaceSearchLoading(false);
+      setBusy(null);
+    }
+  }, [trip?.id, addActivityPanel?.dayId, addPlaceSearchInput]);
+
+  const handleAddPickSearchPlace = useCallback(
+    async (place) => {
+      if (!trip?.id || !addActivityPanel?.dayId || place == null) return;
+      const pid = place.id ?? place.placeId;
+      if (pid == null) {
+        setAddPanelError("This result has no place id.");
+        return;
+      }
+      const dayId = addActivityPanel.dayId;
+      setAddPanelError("");
+      setActionError("");
+      setBusy(`add:${dayId}`);
+      try {
+        const updated = await addDayActivity(trip.id, dayId, { placeId: pid });
+        if (updated?.id) {
+          const merged = mergeTripWithPostResponse(updated, postCreateSnapshot);
+          persistTripSnapshot(merged);
+          setTrip(merged);
+        } else {
+          await refetchTrip();
+        }
+        closeAddActivityPanel();
+      } catch (err) {
+        setAddPanelError(err instanceof Error ? err.message : "Could not add this stop.");
+      } finally {
+        setBusy(null);
+      }
+    },
+    [trip?.id, addActivityPanel, postCreateSnapshot, refetchTrip, closeAddActivityPanel]
+  );
+
+  const handleAddSmartSuggest = useCallback(async () => {
+    if (!trip?.id || !addActivityPanel?.dayId) return;
+    const dayId = addActivityPanel.dayId;
+    setAddPanelError("");
+    setActionError("");
+    setBusy(`add-smart:${dayId}`);
+    try {
+      const data = await addTripActivityAuto(trip.id, dayId);
+      if (data?.id) {
+        const merged = mergeTripWithPostResponse(data, postCreateSnapshot);
+        persistTripSnapshot(merged);
+        setTrip(merged);
+        closeAddActivityPanel();
+        return;
+      }
+      setAddPanelError("Automatic suggestion is unavailable now. Try again in a moment.");
+    } catch (err) {
+      setAddPanelError(
+        err instanceof Error ? err.message : "Could not add a stop automatically."
+      );
+    } finally {
+      setBusy(null);
+    }
+  }, [trip?.id, addActivityPanel?.dayId, postCreateSnapshot, closeAddActivityPanel]);
+
   /** Opens the same reason modal as delete; panel opens after a choice. */
   const openReplaceActivityReasonModal = useCallback(
     (activityId, anchorEl) => {
@@ -529,9 +648,10 @@ function TripDetails() {
         setActionError("Only the trip owner can change stops.");
         return;
       }
+      closeAddActivityPanel();
       setReplaceActivityReasonModal({ activityId, anchorEl });
     },
-    [user, isTripOwner, navigate, id]
+    [user, isTripOwner, navigate, id, closeAddActivityPanel]
   );
 
   const confirmReplaceActivityReason = useCallback(
@@ -642,29 +762,6 @@ function TripDetails() {
       setDeleteActivityModal({ activityId });
     },
     [user?.id, navigate, id]
-  );
-
-  const handleAddDayActivity = useCallback(
-    async (dayId) => {
-      if (!trip?.id || dayId == null) return;
-      setActionError("");
-      setBusy(`add:${dayId}`);
-      try {
-        const updated = await addDayActivity(trip.id, dayId);
-        if (updated?.id) {
-          const merged = mergeTripWithPostResponse(updated, postCreateSnapshot);
-          persistTripSnapshot(merged);
-          setTrip(merged);
-        } else {
-          await refetchTrip();
-        }
-      } catch (err) {
-        setActionError(err instanceof Error ? err.message : "Could not add a stop.");
-      } finally {
-        setBusy(null);
-      }
-    },
-    [trip?.id, postCreateSnapshot, refetchTrip]
   );
 
   const handleCopyShareLink = useCallback(async () => {
@@ -786,6 +883,22 @@ function TripDetails() {
   }, [changeActivityPanel, closeChangeActivityPanel]);
 
   useEffect(() => {
+    if (!addActivityPanel) return;
+    const focusEl = addPanelFirstFocusRef.current;
+    const raf = window.requestAnimationFrame(() => {
+      focusEl?.focus();
+    });
+    const onKey = (e) => {
+      if (e.key === "Escape") closeAddActivityPanel();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [addActivityPanel, closeAddActivityPanel]);
+
+  useEffect(() => {
     let cancelled = false;
 
     const fetchOnce = async () => {
@@ -878,9 +991,9 @@ function TripDetails() {
           className="trip-pdf-btn"
           onClick={() => handleDownloadPdf()}
           disabled={!!busy}
-          title="Download itinerary as PDF"
+          title="Opens a print-ready page in the same style as the app — use Print → Save as PDF"
         >
-          {busy === "pdf" ? "Preparing PDF…" : "Download PDF"}
+          PDF
         </button>
         <button
           type="button"
@@ -958,6 +1071,19 @@ function TripDetails() {
                 </span>
               )}
             </div>
+            {tripCategoryLabels.length > 0 ? (
+              <ul className="trip-hero-categories" aria-label="Trip categories">
+                {tripCategoryLabels.map((label) => (
+                  <li key={label}>{label}</li>
+                ))}
+              </ul>
+            ) : null}
+            {!isTripOwner && tripOwnerName && tripOwnerProfileId != null ? (
+              <p className="trip-hero-owner">
+                Organised by{" "}
+                <Link to={`/users/${tripOwnerProfileId}`}>{tripOwnerName}</Link>
+              </p>
+            ) : null}
             {canEditVisibility === true ? (
               <div className="trip-visibility-row">
                 <label className="trip-visibility-label" htmlFor="trip-visibility-input">
@@ -1021,7 +1147,7 @@ function TripDetails() {
                           <button
                             type="button"
                             className="trip-itinerary-add-btn trip-day-header__add-btn"
-                            onClick={() => handleAddDayActivity(day.id)}
+                            onClick={(e) => openAddActivityPanel(day.id, e.currentTarget)}
                             disabled={!!busy}
                           >
                             Add new Stop
@@ -1378,6 +1504,106 @@ function TripDetails() {
                       className="trip-change-activity-panel__result-btn"
                       disabled={!!busy}
                       onClick={() => handlePickSearchPlace(p)}
+                    >
+                      <span className="trip-change-activity-panel__result-name">{name}</span>
+                      {addr ? (
+                        <span className="trip-change-activity-panel__result-addr">{addr}</span>
+                      ) : null}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </>
+      ) : null}
+
+      {addActivityPanel ? (
+        <>
+          <div
+            className="trip-change-panel-backdrop"
+            role="presentation"
+            aria-hidden="true"
+            onClick={() => !busy && closeAddActivityPanel()}
+          />
+          <div
+            className="trip-change-activity-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="trip-add-activity-title"
+            style={{
+              top: addActivityPanel.top,
+              left: addActivityPanel.left,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="trip-change-activity-panel__head">
+              <h2 id="trip-add-activity-title" className="trip-change-activity-panel__title">
+                Add a stop
+              </h2>
+              <button
+                type="button"
+                className="trip-change-activity-panel__close"
+                disabled={!!busy}
+                onClick={closeAddActivityPanel}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <p className="trip-change-activity-panel__hint">
+              Suggest adds a stop automatically. Or search manually and choose a place from the list.
+            </p>
+            <button
+              ref={addPanelFirstFocusRef}
+              type="button"
+              className="trip-change-activity-panel__suggest"
+              disabled={!!busy || addPlaceSearchLoading}
+              onClick={() => handleAddSmartSuggest()}
+            >
+              {busy === `add-smart:${addActivityPanel.dayId}` ? "Working…" : "Suggest for me"}
+            </button>
+            <div className="trip-change-activity-panel__search">
+              <label className="trip-change-activity-panel__label" htmlFor="trip-add-place-search-input">
+                Search manually
+              </label>
+              <div className="trip-change-activity-panel__search-row">
+                <input
+                  id="trip-add-place-search-input"
+                  type="search"
+                  className="trip-change-activity-panel__input"
+                  value={addPlaceSearchInput}
+                  onChange={(e) => setAddPlaceSearchInput(e.target.value)}
+                  placeholder="e.g. rooftop café near hotel"
+                  disabled={!!busy || addPlaceSearchLoading}
+                  autoComplete="off"
+                />
+                <button
+                  type="button"
+                  className="trip-change-activity-panel__search-btn"
+                  disabled={!!busy || addPlaceSearchLoading || !addPlaceSearchInput.trim()}
+                  onClick={() => handleAddPlaceSearchSubmit()}
+                >
+                  {addPlaceSearchLoading ? "…" : "Search"}
+                </button>
+              </div>
+            </div>
+            {addPanelError ? (
+              <p className="trip-change-activity-panel__error" role="alert">
+                {addPanelError}
+              </p>
+            ) : null}
+            <ul className="trip-change-activity-panel__results" aria-label="Search results">
+              {addPlaceSearchResults.map((p, idx) => {
+                const key = p.id ?? p.placeId ?? idx;
+                const { name, addr } = placeSearchRowLabel(p);
+                return (
+                  <li key={String(key)}>
+                    <button
+                      type="button"
+                      className="trip-change-activity-panel__result-btn"
+                      disabled={!!busy}
+                      onClick={() => handleAddPickSearchPlace(p)}
                     >
                       <span className="trip-change-activity-panel__result-name">{name}</span>
                       {addr ? (

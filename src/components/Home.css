@@ -472,6 +472,32 @@ a.home-hero-inline-link {
   overflow: hidden;
 }
 
+.trip-card-owner {
+  margin: -2px 0 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #5c5c70;
+}
+
+.trip-card-owner-link {
+  color: var(--brand);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(var(--brand-rgb), 0.28);
+  cursor: pointer;
+  background: none;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+  font: inherit;
+  font-weight: 600;
+  padding: 0;
+}
+
+.trip-card-owner-link:hover {
+  color: var(--brand-deep);
+  border-bottom-color: rgba(var(--brand-rgb), 0.5);
+}
+
 .trip-card-preview {
   margin: 0 0 8px;
   font-size: 0.78rem;

@@ -179,9 +179,34 @@ export async function deleteTripActivity(tripId, activityId, { reason }) {
 }
 
 /**
- * POST — add an activity to a day (no body; path params + session). Session required for owners.
+ * POST — add an activity to a day. Session required for owners (assertTripAccess).
+ * Body: AddTripActivityRequest — `placeId` only.
  */
-export async function addDayActivity(tripId, dayId) {
+export async function addDayActivity(tripId, dayId, { placeId } = {}) {
+  const res = await fetch(
+    apiUrl(
+      `/api/public/trips/${encodeURIComponent(tripId)}/days/${encodeURIComponent(dayId)}/activities`
+    ),
+    {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ placeId }),
+    }
+  );
+  if (res.status === 204) return null;
+  const data = await parseResponseJson(res);
+  if (!res.ok) {
+    throw new Error(errorMessageFromBody(data, "Could not add this stop."));
+  }
+  return unwrapTripPayload(data);
+}
+
+/**
+ * POST — system-picked place for a new stop (`addTripActivityAuto`), same endpoint as manual add.
+ * No body. Backend decides auto mode when `placeId` is absent.
+ */
+export async function addTripActivityAuto(tripId, dayId) {
   const res = await fetch(
     apiUrl(
       `/api/public/trips/${encodeURIComponent(tripId)}/days/${encodeURIComponent(dayId)}/activities`
@@ -191,10 +216,9 @@ export async function addDayActivity(tripId, dayId) {
       credentials: "include",
     }
   );
-  if (res.status === 204) return null;
   const data = await parseResponseJson(res);
   if (!res.ok) {
-    throw new Error(errorMessageFromBody(data, "Could not add this stop."));
+    throw new Error(errorMessageFromBody(data, "Could not add a stop automatically."));
   }
   return unwrapTripPayload(data);
 }
@@ -301,6 +325,33 @@ export async function fetchPublicTripsList(options = {}) {
         res.status >= 500
           ? "The server is busy right now. Please try again in a moment."
           : "We couldn’t load trips. Please refresh the page."
+      )
+    );
+  }
+  const content = Array.isArray(data?.content) ? data.content : Array.isArray(data) ? data : [];
+  return { raw: data, content };
+}
+
+/**
+ * GET — public trips for a user (same filters/sort/pagination as GET /api/public/trips).
+ * Owner sees all trips; others only `isPublic === true`.
+ */
+export async function fetchUserPublicTripsList(userId, options = {}) {
+  const listOptions = { ...options };
+  delete listOptions.userId;
+  const qs = buildPublicTripsQueryString(listOptions);
+  const res = await fetch(
+    apiUrl(`/api/public/users/${encodeURIComponent(String(userId))}/trips?${qs}`),
+    { credentials: "include" }
+  );
+  const data = await parseResponseJson(res);
+  if (!res.ok) {
+    throw new Error(
+      errorMessageFromBody(
+        data,
+        res.status >= 500
+          ? "The server is busy right now. Please try again in a moment."
+          : "We couldn’t load this user’s trips."
       )
     );
   }

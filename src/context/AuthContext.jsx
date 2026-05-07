@@ -36,6 +36,25 @@ export const AuthProvider = ({ children }) => {
     };
   }, [refreshUser]);
 
+  /** Keep the session cookie in sync while the tab is open (pairs with longer-lived server JWT). */
+  useEffect(() => {
+    if (!user) return undefined;
+    const intervalMs = 8 * 60 * 1000;
+    const id = window.setInterval(() => {
+      void refreshUser();
+    }, intervalMs);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refreshUser();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, [user, refreshUser]);
+
   /** Call after successful sign-in; body matches UserInfoResponse from the backend. */
   const login = (userInfo) => {
     setUser(userInfo);
