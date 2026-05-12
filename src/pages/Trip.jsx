@@ -21,6 +21,8 @@ import {
 } from "../utils/geoApi";
 import { unwrapTripPayload } from "../utils/tripItinerary";
 import SearchableSelect from "../components/SearchableSelect";
+import InterestingPlacesPrompt from "../components/InterestingPlacesPrompt";
+import { matchInterestingPlaces } from "../api/interestingPlaces";
 import "../components/Trip.css";
 
 function selectionKey(groupId, interestId) {
@@ -99,6 +101,13 @@ function Trip() {
   const [groupLoading, setGroupLoading] = useState({});
   const [groupErrors, setGroupErrors] = useState({});
   const loadedGroupsRef = useRef(new Set());
+
+  /** Saved "interesting" places that match the current trip geography (city or country). */
+  const [interestingMatches, setInterestingMatches] = useState([]);
+  /** Modal driving the one-by-one accept/skip prompt before trip POST. */
+  const [showInterestingPrompt, setShowInterestingPrompt] = useState(false);
+  /** When a queued POST is waiting for the prompt to finish, the data lives here. */
+  const [pendingTripPayload, setPendingTripPayload] = useState(null);
 
   const [countries, setCountries] = useState([]);
   const [countriesLoading, setCountriesLoading] = useState(true);
@@ -360,11 +369,33 @@ function Trip() {
       isPublic,
       intensity,
       ...(cityName ? { city: cityName } : {}),
+      ...(selectedCityId ? { cityIds: [Number(selectedCityId)] } : {}),
       ...(currency ? { currency } : {}),
       hobbies: selectedInterests.map((s) => s.label),
       interestIds: categoryCodes,
     };
 
+    // Look for "interesting" matches before submitting; if any, the prompt drives the POST.
+    try {
+      const matches = await matchInterestingPlaces({
+        cityId: selectedCityId || undefined,
+        countryId: selectedCountryId || undefined,
+      });
+      if (Array.isArray(matches) && matches.length > 0) {
+        setInterestingMatches(matches);
+        setPendingTripPayload(tripData);
+        setShowInterestingPrompt(true);
+        return; // loading stays true until prompt completes / cancels
+      }
+    } catch (err) {
+      // Non-fatal: fall through and submit without injection.
+      console.warn("Could not load interesting-place matches:", err);
+    }
+
+    await postTripCreate(tripData);
+  };
+
+  const postTripCreate = async (tripData) => {
     try {
       const res = await fetch(apiUrl("/api/public/trips"), {
         method: "POST",
@@ -399,6 +430,28 @@ function Trip() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePromptComplete = async (acceptedIds) => {
+    setShowInterestingPrompt(false);
+    const payload = pendingTripPayload;
+    setPendingTripPayload(null);
+    if (!payload) {
+      setLoading(false);
+      return;
+    }
+    const finalPayload =
+      Array.isArray(acceptedIds) && acceptedIds.length > 0
+        ? { ...payload, mustIncludePlaceIds: acceptedIds }
+        : payload;
+    await postTripCreate(finalPayload);
+  };
+
+  const handlePromptCancel = () => {
+    setShowInterestingPrompt(false);
+    setPendingTripPayload(null);
+    setInterestingMatches([]);
+    setLoading(false);
   };
 
   const sortedCountries = useMemo(() => {
@@ -816,6 +869,13 @@ function Trip() {
         )}
       </form>
       </div>
+      {showInterestingPrompt && (
+        <InterestingPlacesPrompt
+          matches={interestingMatches}
+          onComplete={handlePromptComplete}
+          onCancel={handlePromptCancel}
+        />
+      )}
     </div>
   );
 }

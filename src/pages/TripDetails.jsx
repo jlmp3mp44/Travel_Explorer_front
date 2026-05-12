@@ -28,6 +28,8 @@ import {
   stripActivityUserRatingForId,
   unwrapTripPayload,
 } from "../utils/tripItinerary";
+import InterestingPlaceToggle from "../components/InterestingPlaceToggle";
+import { listInterestingPlaces } from "../api/interestingPlaces";
 import { useAuth } from "../context/AuthContext";
 import { isTripOwnerFromPayload } from "../utils/tripOwnership";
 import {
@@ -185,6 +187,40 @@ function TripDetails() {
   const [refreshing, setRefreshing] = useState(false);
   const [actionError, setActionError] = useState("");
   const [busy, setBusy] = useState(null);
+
+  /** Pre-loaded "interesting places" for this user so each toggle starts in the right state. */
+  const [interestingSavedSet, setInterestingSavedSet] = useState(() => new Set());
+  const [interestingIdMap, setInterestingIdMap] = useState(() => new Map());
+  useEffect(() => {
+    if (!user) {
+      setInterestingSavedSet(new Set());
+      setInterestingIdMap(new Map());
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await listInterestingPlaces();
+        if (cancelled) return;
+        const set = new Set();
+        const map = new Map();
+        for (const ip of list || []) {
+          const pid = ip?.place?.id;
+          if (pid != null) {
+            set.add(Number(pid));
+            map.set(Number(pid), ip.id);
+          }
+        }
+        setInterestingSavedSet(set);
+        setInterestingIdMap(map);
+      } catch {
+        /* non-fatal — toggles will lazy-load their own state */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
   const [dndDraggingKey, setDndDraggingKey] = useState(null);
   const [dndDropTargetKey, setDndDropTargetKey] = useState(null);
   /** `{ activityId }` while choosing reason for delete */
@@ -1268,12 +1304,43 @@ function TripDetails() {
 
                             {displayPlacesList.length > 0 ? (
                               <ul className="trip-places">
-                                {displayPlacesList.map((place, j) => (
-                                  <li key={j}>
-                                    <span className="trip-place-index">{stopsBefore + j + 1}.</span>
-                                    {place.title}
-                                  </li>
-                                ))}
+                                {displayPlacesList.map((place, j) => {
+                                  const pid = place?.id ?? place?.placeId;
+                                  return (
+                                    <li key={pid ?? j}>
+                                      <span className="trip-place-index">{stopsBefore + j + 1}.</span>
+                                      <span className="trip-place-title">{place.title}</span>
+                                      {user && pid != null && (
+                                        <InterestingPlaceToggle
+                                          placeId={Number(pid)}
+                                          context={{
+                                            cityId: trip?.cityIds?.[0],
+                                            countryId: trip?.countryIds?.[0],
+                                          }}
+                                          savedSet={interestingSavedSet}
+                                          savedIdMap={interestingIdMap}
+                                          onChange={({ saved, savedRecord }) => {
+                                            setInterestingSavedSet((prev) => {
+                                              const next = new Set(prev);
+                                              if (saved) next.add(Number(pid));
+                                              else next.delete(Number(pid));
+                                              return next;
+                                            });
+                                            setInterestingIdMap((prev) => {
+                                              const next = new Map(prev);
+                                              if (saved && savedRecord?.id != null) {
+                                                next.set(Number(pid), savedRecord.id);
+                                              } else {
+                                                next.delete(Number(pid));
+                                              }
+                                              return next;
+                                            });
+                                          }}
+                                        />
+                                      )}
+                                    </li>
+                                  );
+                                })}
                               </ul>
                             ) : (
                               <p className="trip-activity-empty">No place name in this stop.</p>

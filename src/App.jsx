@@ -13,6 +13,7 @@ import Discover from "./pages/Discover";
 import BestTrips from "./pages/BestTrips";
 import MyTrips from "./pages/MyTrips";
 import UserPublicTrips from "./pages/UserPublicTrips";
+import InterestingPlaces from "./pages/InterestingPlaces";
 import TripPrint from "./pages/TripPrint";
 import TripDeletedFlashBanner from "./components/TripDeletedFlashBanner";
 
@@ -34,6 +35,7 @@ function App() {
             <Route path="/discover" element={<Discover />} />
             <Route path="/best-trips" element={<BestTrips />} />
             <Route path="/my-trips" element={<MyTrips />} />
+            <Route path="/my-interesting-places" element={<InterestingPlaces />} />
             <Route path="/trip" element={<Trip />} />
             <Route path="/result" element={<Result />} />
             <Route path="/trip/:id" element={<TripDetails />} />
