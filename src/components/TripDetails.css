@@ -1256,6 +1256,13 @@
   color: var(--text-h, #1a1a2e);
 }
 
+.trip-activity-place-titles__toggle {
+  flex-shrink: 0;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+}
+
 .trip-place-index {
   display: inline-block;
   min-width: 1.6em;

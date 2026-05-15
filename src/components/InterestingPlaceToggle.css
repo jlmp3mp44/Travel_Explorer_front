@@ -1,0 +1,37 @@
+.interesting-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #b07c00;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 999px;
+  line-height: 1;
+  transition: background-color 120ms ease, transform 120ms ease;
+}
+.interesting-toggle:hover:not(:disabled) {
+  background-color: rgba(255, 196, 0, 0.12);
+  transform: scale(1.05);
+}
+.interesting-toggle:focus-visible {
+  outline: 2px solid #ffb600;
+  outline-offset: 2px;
+}
+.interesting-toggle.is-saved {
+  color: #d39400;
+}
+.interesting-toggle:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.interesting-toggle__icon {
+  font-size: 1.1rem;
+}
+.interesting-toggle--sm .interesting-toggle__icon {
+  font-size: 0.95rem;
+}
+.interesting-toggle--lg .interesting-toggle__icon {
+  font-size: 1.4rem;
+}

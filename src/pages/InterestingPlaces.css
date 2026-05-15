@@ -1,0 +1,242 @@
+.ip-page {
+  min-height: calc(100dvh - 64px);
+  padding: 92px 18px 34px;
+  color: #f4f0e8;
+}
+
+.ip-container {
+  max-width: 1140px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(340px, 0.95fr) minmax(360px, 1.05fr);
+  grid-template-areas:
+    "header header"
+    "search saved";
+  gap: 18px;
+}
+
+.ip-header {
+  grid-area: header;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.ip-title {
+  margin: 0;
+  color: #fff7ee;
+  font-size: clamp(1.6rem, 3.8vw, 2.2rem);
+  line-height: 1.1;
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.28);
+}
+
+.ip-lead {
+  margin: 0 auto;
+  text-align: center;
+  max-width: 860px;
+  color: rgba(255, 244, 230, 0.82);
+}
+
+.ip-search-section,
+.ip-saved-section {
+  background:
+    linear-gradient(170deg, rgba(24, 24, 26, 0.94), rgba(20, 20, 22, 0.94)),
+    linear-gradient(135deg, rgba(255, 122, 0, 0.08), rgba(255, 122, 0, 0));
+  border: 1px solid rgba(255, 122, 0, 0.3);
+  border-radius: 14px;
+  box-shadow:
+    0 18px 36px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  padding: 16px;
+  min-height: 420px;
+}
+
+.ip-search-section {
+  grid-area: search;
+}
+
+.ip-saved-section {
+  grid-area: saved;
+}
+
+.ip-section-title {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+  color: #ffb063;
+  letter-spacing: 0.02em;
+}
+
+.ip-filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.ip-filter {
+  display: flex;
+  flex-direction: column;
+}
+
+.ip-page .searchable-select__label {
+  color: rgba(255, 233, 210, 0.92);
+}
+
+.ip-page .searchable-select .searchable-select__trigger {
+  border-radius: 10px;
+  border-color: rgba(255, 122, 0, 0.35);
+  background: rgba(255, 255, 255, 0.94) !important;
+}
+
+.ip-page .searchable-select .searchable-select__trigger:hover:not(:disabled) {
+  border-color: rgba(255, 122, 0, 0.65);
+}
+
+.ip-search-form {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.ip-search-input {
+  flex: 1;
+  padding: 11px 12px;
+  border: 1px solid rgba(255, 122, 0, 0.35);
+  border-radius: 10px;
+  font-size: 0.96rem;
+  background: rgba(255, 255, 255, 0.97);
+  color: #222;
+}
+
+.ip-search-input:focus {
+  outline: none;
+  border-color: rgba(255, 122, 0, 0.8);
+  box-shadow: 0 0 0 3px rgba(255, 122, 0, 0.2);
+}
+
+.ip-btn {
+  padding: 9px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease, border-color 0.15s ease;
+}
+
+.ip-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ip-btn--primary,
+.ip-btn--solid {
+  background: linear-gradient(135deg, #ff7a00, #e65c00);
+  color: #fff;
+  border-color: rgba(255, 122, 0, 0.78);
+  box-shadow: 0 8px 20px rgba(255, 122, 0, 0.24);
+}
+
+.ip-btn--primary:hover:not(:disabled),
+.ip-btn--solid:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.ip-btn--ghost {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #ffe3c7;
+}
+
+.ip-btn--danger {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 165, 110, 0.35);
+  color: #ffb98a;
+}
+
+.ip-btn--danger:hover:not(:disabled) {
+  background: rgba(255, 122, 0, 0.12);
+  border-color: rgba(255, 122, 0, 0.55);
+}
+
+.ip-error {
+  color: #ff9670;
+  margin: 8px 0 0;
+}
+
+.ip-empty {
+  color: rgba(255, 233, 210, 0.72);
+}
+
+.ip-results,
+.ip-saved-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 58dvh;
+  overflow: auto;
+}
+
+.ip-result-row,
+.ip-saved-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid rgba(255, 165, 110, 0.2);
+  border-radius: 11px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03));
+}
+
+.ip-result-info,
+.ip-saved-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ip-result-title {
+  font-weight: 600;
+  color: #fff0df;
+}
+
+.ip-result-coords {
+  color: rgba(255, 231, 206, 0.68);
+  font-size: 0.83rem;
+}
+
+@media (max-width: 960px) {
+  .ip-container {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "header"
+      "search"
+      "saved";
+  }
+
+  .ip-search-section,
+  .ip-saved-section {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .ip-page {
+    padding: 86px 12px 24px;
+  }
+
+  .ip-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .ip-search-form {
+    flex-direction: column;
+  }
+}
