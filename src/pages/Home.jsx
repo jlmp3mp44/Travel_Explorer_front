@@ -5,6 +5,8 @@ import { useAuth } from "../context/AuthContext";
 import { apiUrl } from "../config/api";
 import { friendlyNetworkError, parseResponseJson } from "../utils/friendlyErrors";
 import TripListSkeleton from "../components/skeletons/TripListSkeleton";
+import TripPhotoUrl from "../components/TripPhotoUrl.jsx";
+import { tripCoverPhotoUrl } from "../utils/tripDisplay";
 import "../components/Home.css";
 
 const BENEFITS = [
@@ -221,6 +223,15 @@ function Home() {
                       }
                     }}
                   >
+                {tripCoverPhotoUrl(trip) ? (
+                  <div className="trip-card-cover-wrap">
+                    <TripPhotoUrl
+                      url={tripCoverPhotoUrl(trip)}
+                      alt={trip.title ? `Cover: ${trip.title}` : "Trip cover"}
+                      className="trip-card-cover__photo"
+                    />
+                  </div>
+                ) : null}
                     <div className="trip-card-inner">
                       <h3 className="trip-card-title">{trip.title}</h3>
                       {(() => {

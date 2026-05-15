@@ -15,8 +15,12 @@ function normalizePlace(p) {
     p.displayName ??
     p.text ??
     "";
-  if (!title) return null;
-  return { title: String(title) };
+  const photoRaw = p.photoUrl ?? p.photo_url ?? p.photoURL;
+  const photoUrl =
+    photoRaw != null && String(photoRaw).trim() !== "" ? String(photoRaw).trim() : undefined;
+  if (!title && !photoUrl) return null;
+  const titleStr = title ? String(title) : "Place";
+  return photoUrl ? { title: titleStr, photoUrl } : { title: titleStr };
 }
 
 /** Backend may send one place as an object, or a map keyed by index — normalize to an array. */

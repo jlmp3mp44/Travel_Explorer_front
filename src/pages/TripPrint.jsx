@@ -8,9 +8,10 @@ import {
   resolveTripDaysForDisplay,
   unwrapTripPayload,
 } from "../utils/tripItinerary";
-import { extractTripCategoryLabels, tripOwnerDisplayName } from "../utils/tripDisplay";
+import { extractTripCategoryLabels, placePhotoUrl, tripCoverPhotoUrl, tripOwnerDisplayName } from "../utils/tripDisplay";
 import { isTripOwnerFromPayload } from "../utils/tripOwnership";
 import { useAuth } from "../context/AuthContext";
+import TripPhotoUrl from "../components/TripPhotoUrl.jsx";
 import "./TripPrint.css";
 
 function formatIntensityLabel(raw) {
@@ -95,6 +96,7 @@ function TripPrint() {
   const categoryLabels = useMemo(() => extractTripCategoryLabels(trip), [trip]);
   const ownerName = useMemo(() => tripOwnerDisplayName(trip), [trip]);
   const viewerIsOwner = useMemo(() => isTripOwnerFromPayload(trip, user), [trip, user]);
+  const coverUrl = useMemo(() => tripCoverPhotoUrl(trip), [trip]);
 
   useEffect(() => {
     if (loading || loadError || !trip) return;
@@ -140,6 +142,17 @@ function TripPrint() {
       </div>
 
       <header className="trip-print-hero">
+        <div className="trip-print-hero-top">
+          {coverUrl ? (
+            <div className="trip-print-cover-wrap">
+              <TripPhotoUrl
+                url={coverUrl}
+                alt={heroTitle ? `Cover: ${heroTitle}` : "Trip cover"}
+                className="trip-print-cover__photo"
+              />
+            </div>
+          ) : null}
+          <div className="trip-print-hero-text">
         <h1 className="trip-print-title">{heroTitle}</h1>
         {trip.desc ? <p className="trip-print-desc">{trip.desc}</p> : null}
         <div className="trip-print-meta">
@@ -160,6 +173,8 @@ function TripPrint() {
             ))}
           </ul>
         ) : null}
+          </div>
+        </div>
       </header>
 
       <section className="trip-print-days" aria-label="Itinerary">
@@ -190,9 +205,23 @@ function TripPrint() {
                         ) : null}
                         {places.length > 0 ? (
                           <ul className="trip-print-place-list">
-                            {places.map((place, j) => (
-                              <li key={j}>{place.title}</li>
-                            ))}
+                            {places.map((place, j) => {
+                              const pUrl = placePhotoUrl(place);
+                              return (
+                                <li key={j} className="trip-print-place-row">
+                                  {pUrl ? (
+                                    <div className="trip-print-place-thumb">
+                                      <TripPhotoUrl
+                                        url={pUrl}
+                                        alt={place.title ?? "Place"}
+                                        className="trip-print-place-thumb__img"
+                                      />
+                                    </div>
+                                  ) : null}
+                                  <span className="trip-print-place-title">{place.title}</span>
+                                </li>
+                              );
+                            })}
                           </ul>
                         ) : (
                           <span className="trip-print-stop-empty">No place name</span>

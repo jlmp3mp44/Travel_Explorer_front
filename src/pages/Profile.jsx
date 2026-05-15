@@ -1,37 +1,23 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { updateUserProfile } from "../api/userApi";
-import { deletePublicTrip, fetchMyTrips, updatePublicTrip } from "../api/tripPublic";
 import { friendlyNetworkError } from "../utils/friendlyErrors";
-import TripListSkeleton from "../components/skeletons/TripListSkeleton";
 import "../components/Profile.css";
-import "../components/MyTrips.css";
 
 const MASK = "••••••••";
 
-function tripIsPublic(t) {
-  const v = t?.isPublic ?? t?.is_public;
-  if (v === false) return false;
-  return true;
-}
-
 function Profile() {
   const navigate = useNavigate();
-  const { user, username, email, phone: phoneFromAuth, roles, loading: authLoading, refreshUser } =
+  const { user, username, email, phone: phoneFromAuth, loading: authLoading, refreshUser } =
     useAuth();
 
+  const [phoneEditing, setPhoneEditing] = useState(false);
   const [phoneInput, setPhoneInput] = useState("");
   const [showPasswordHint, setShowPasswordHint] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [profileSaved, setProfileSaved] = useState("");
   const [saving, setSaving] = useState(false);
-
-  const [trips, setTrips] = useState([]);
-  const [tripsLoading, setTripsLoading] = useState(true);
-  const [tripsError, setTripsError] = useState("");
-  const [busyId, setBusyId] = useState(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -46,26 +32,6 @@ function Profile() {
     setPhoneInput(p ? String(p) : "");
   }, [user, phoneFromAuth]);
 
-  const loadTrips = useCallback(async () => {
-    if (user?.id == null) return;
-    setTripsLoading(true);
-    setTripsError("");
-    try {
-      const list = await fetchMyTrips(user.id);
-      setTrips(Array.isArray(list) ? list : []);
-    } catch (e) {
-      setTripsError(e instanceof Error ? e.message : friendlyNetworkError(e));
-      setTrips([]);
-    } finally {
-      setTripsLoading(false);
-    }
-  }, [user?.id]);
-
-  useEffect(() => {
-    if (authLoading || !user) return;
-    void loadTrips();
-  }, [authLoading, user, loadTrips]);
-
   const handleSavePhone = async (e) => {
     e.preventDefault();
     setProfileError("");
@@ -75,6 +41,7 @@ function Profile() {
       await updateUserProfile({ phoneNumber: phoneInput.trim() });
       await refreshUser();
       setProfileSaved("Profile saved.");
+      setPhoneEditing(false);
       window.setTimeout(() => setProfileSaved(""), 3000);
     } catch (err) {
       setProfileError(err instanceof Error ? err.message : friendlyNetworkError(err));
@@ -83,43 +50,19 @@ function Profile() {
     }
   };
 
-  const handleDeleteTrip = async (trip) => {
-    if (trip?.id == null) return;
-    setBusyId(trip.id);
-    setTripsError("");
-    try {
-      await deletePublicTrip(trip.id);
-      if (typeof window !== "undefined") {
-        try {
-          window.localStorage.removeItem(`tripSnapshot:${trip.id}`);
-        } catch {
-          /* ignore */
-        }
-      }
-      setTrips((prev) => prev.filter((t) => String(t.id) !== String(trip.id)));
-      setDeleteConfirmId(null);
-    } catch (e) {
-      setTripsError(e instanceof Error ? e.message : "Could not delete this trip.");
-    } finally {
-      setBusyId(null);
-    }
+  const startPhoneChange = () => {
+    const p = user?.phoneNumber ?? user?.phone ?? phoneFromAuth ?? "";
+    setPhoneInput(p ? String(p) : "");
+    setPhoneEditing(true);
+    setProfileError("");
+    setProfileSaved("");
   };
 
-  const togglePublic = async (trip, next) => {
-    if (trip?.id == null) return;
-    setBusyId(trip.id);
-    setTripsError("");
-    try {
-      const updated = await updatePublicTrip(trip.id, { isPublic: next });
-      const pub = updated?.isPublic ?? updated?.is_public ?? next;
-      setTrips((prev) =>
-        prev.map((t) => (String(t.id) === String(trip.id) ? { ...t, isPublic: pub } : t))
-      );
-    } catch (e) {
-      setTripsError(e instanceof Error ? e.message : "Could not update visibility.");
-    } finally {
-      setBusyId(null);
-    }
+  const cancelPhoneChange = () => {
+    const p = user?.phoneNumber ?? user?.phone ?? phoneFromAuth ?? "";
+    setPhoneInput(p ? String(p) : "");
+    setPhoneEditing(false);
+    setProfileError("");
   };
 
   if (authLoading) {
@@ -136,6 +79,8 @@ function Profile() {
 
   const displayUsername = user.username ?? username;
   const displayEmail = user.email ?? email;
+  const displayPhoneRaw = user.phoneNumber ?? user.phone ?? phoneFromAuth ?? "";
+  const displayPhone = displayPhoneRaw ? String(displayPhoneRaw) : "";
 
   const initial =
     displayUsername && String(displayUsername).length > 0
@@ -163,8 +108,24 @@ function Profile() {
               </Link>
             ) : null}
           </div>
+        </aside>
 
-          <div className="profile-private-card">
+        <section
+          className="profile-trips-panel profile-settings-page"
+          aria-labelledby="profile-settings-heading"
+          id="profile-settings"
+        >
+          <header className="profile-trips-header">
+            <h1 id="profile-settings-heading" className="profile-trips-title">
+              Settings
+            </h1>
+            <p className="profile-trips-lead">
+              Account details for this profile. Your trips are on{" "}
+              <Link to="/my-trips">My trips</Link>.
+            </p>
+          </header>
+
+          <div className="profile-private-card profile-private-card--in-main">
             <h2 className="profile-card-overline">Account (private)</h2>
             <dl className="profile-fields profile-fields--compact">
               <div className="profile-field">
@@ -174,22 +135,43 @@ function Profile() {
               <div className="profile-field profile-field--full">
                 <dt>Phone</dt>
                 <dd>
-                  <form className="profile-phone-form" onSubmit={handleSavePhone}>
-                    <input
-                      id="profile-phone"
-                      type="tel"
-                      autoComplete="tel"
-                      inputMode="tel"
-                      className="profile-phone-input"
-                      value={phoneInput}
-                      onChange={(e) => setPhoneInput(e.target.value)}
-                      placeholder="Your phone number"
-                      aria-label="Phone number"
-                    />
-                    <button type="submit" className="profile-save-btn" disabled={saving}>
-                      {saving ? "Saving…" : "Save"}
-                    </button>
-                  </form>
+                  {!phoneEditing ? (
+                    <div className="profile-phone-readonly">
+                      <p className="profile-phone-readonly__value">{displayPhone || "Not set"}</p>
+                      <button
+                        type="button"
+                        className="profile-change-phone-btn"
+                        onClick={startPhoneChange}
+                      >
+                        Change phone number
+                      </button>
+                    </div>
+                  ) : (
+                    <form className="profile-phone-form" onSubmit={handleSavePhone}>
+                      <input
+                        id="profile-phone"
+                        type="tel"
+                        autoComplete="tel"
+                        inputMode="tel"
+                        className="profile-phone-input"
+                        value={phoneInput}
+                        onChange={(e) => setPhoneInput(e.target.value)}
+                        placeholder="Your phone number"
+                        aria-label="Phone number"
+                      />
+                      <button type="submit" className="profile-save-btn" disabled={saving}>
+                        {saving ? "Saving…" : "Save"}
+                      </button>
+                      <button
+                        type="button"
+                        className="profile-phone-cancel-btn"
+                        disabled={saving}
+                        onClick={cancelPhoneChange}
+                      >
+                        Cancel
+                      </button>
+                    </form>
+                  )}
                 </dd>
               </div>
               <div className="profile-field profile-field--full">
@@ -218,12 +200,6 @@ function Profile() {
                   </button>
                 </dd>
               </div>
-              {Array.isArray(roles) && roles.length > 0 && (
-                <div className="profile-field">
-                  <dt>Roles</dt>
-                  <dd>{roles.join(", ")}</dd>
-                </div>
-              )}
             </dl>
             {profileError ? (
               <p className="profile-inline-error" role="alert">
@@ -236,108 +212,15 @@ function Profile() {
               </p>
             ) : null}
           </div>
-        </aside>
 
-        <section className="profile-trips-panel" aria-labelledby="profile-trips-heading">
-          <header className="profile-trips-header">
-            <h1 id="profile-trips-heading" className="profile-trips-title">
-              Your trips
-            </h1>
-            <p className="profile-trips-lead">
-              Open an itinerary or control whether it appears on Discover.
-            </p>
+          <div className="profile-home-actions profile-home-actions--below-settings">
+            <Link to="/my-trips" className="profile-home-link-btn">
+              Go to My trips
+            </Link>
             <button type="button" className="profile-trips-cta" onClick={() => navigate("/trip")}>
               Create a trip
             </button>
-          </header>
-
-          {tripsError ? (
-            <p className="my-trips-error" role="alert">
-              {tripsError}
-            </p>
-          ) : null}
-
-          {tripsLoading ? (
-            <TripListSkeleton count={4} variant="discover" />
-          ) : trips.length === 0 ? (
-            <p className="my-trips-empty">
-              No trips yet.{" "}
-              <button type="button" className="my-trips-link" onClick={() => navigate("/trip")}>
-                Create a trip
-              </button>
-            </p>
-          ) : (
-            <ul className="my-trips-list">
-              {trips.map((trip) => {
-                const pub = tripIsPublic(trip);
-                const busy = busyId === trip.id;
-                return (
-                  <li key={trip.id} className="my-trips-row">
-                    <button
-                      type="button"
-                      className="my-trips-row-main"
-                      onClick={() => navigate(`/trip/${trip.id}`)}
-                    >
-                      <span className="my-trips-row-title">{trip.title ?? `Trip ${trip.id}`}</span>
-                      <span className="my-trips-row-dates">
-                        {trip.startDate} – {trip.endDate}
-                      </span>
-                    </button>
-                    {deleteConfirmId === trip.id ? (
-                      <div className="my-trips-delete-inline" role="group" aria-label="Confirm delete trip">
-                        <span className="my-trips-delete-inline__ask">Delete this whole trip?</span>
-                        <button
-                          type="button"
-                          className="my-trips-delete-inline__btn my-trips-delete-inline__btn--cancel"
-                          disabled={busy}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteConfirmId(null);
-                          }}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          className="my-trips-delete-inline__btn my-trips-delete-inline__btn--danger"
-                          disabled={busy}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            void handleDeleteTrip(trip);
-                          }}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <label className="my-trips-visibility">
-                          <input
-                            type="checkbox"
-                            checked={pub}
-                            disabled={busy}
-                            onChange={(e) => togglePublic(trip, e.target.checked)}
-                          />
-                          <span>On Discover</span>
-                        </label>
-                        <button
-                          type="button"
-                          className="my-trips-row-delete"
-                          disabled={busy}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteConfirmId(trip.id);
-                          }}
-                        >
-                          Delete
-                        </button>
-                      </>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+          </div>
         </section>
       </div>
     </div>

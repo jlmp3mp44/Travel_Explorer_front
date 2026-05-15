@@ -382,6 +382,112 @@
   color: #047857;
 }
 
+.profile-settings-page {
+  min-width: 0;
+}
+
+.profile-private-card--in-main {
+  max-width: 40rem;
+}
+
+.profile-home-actions--below-settings {
+  margin-top: 22px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(var(--ink-rgb), 0.08);
+}
+
+.profile-home-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  margin-top: 8px;
+}
+
+.profile-home-link-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 18px;
+  border-radius: 0;
+  border: 1px solid var(--border);
+  background: var(--bg, #fff);
+  color: var(--text-h, #1a1a2e);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.86rem;
+  text-decoration: none;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.profile-home-link-btn:hover {
+  border-color: rgba(var(--brand-rgb), 0.45);
+  background: rgba(var(--brand-rgb), 0.06);
+}
+
+.profile-trips-lead a {
+  color: var(--brand);
+  font-weight: 700;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(var(--brand-rgb), 0.35);
+}
+
+.profile-trips-lead a:hover {
+  color: var(--brand-deep, #a34a18);
+}
+
+.profile-phone-readonly {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.profile-phone-readonly__value {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-h);
+}
+
+.profile-change-phone-btn {
+  padding: 8px 14px;
+  border-radius: 0;
+  border: 1px solid rgba(var(--ink-rgb), 0.35);
+  background: rgba(var(--ink-rgb), 0.08);
+  color: var(--text-h);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+
+.profile-change-phone-btn:hover {
+  background: rgba(var(--ink-rgb), 0.14);
+}
+
+.profile-phone-cancel-btn {
+  padding: 10px 16px;
+  border-radius: 0;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.78rem;
+  cursor: pointer;
+  color: var(--text-h);
+}
+
+.profile-phone-cancel-btn:hover:not(:disabled) {
+  border-color: rgba(var(--brand-rgb), 0.4);
+}
+
+.profile-phone-cancel-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 @media (max-width: 520px) {
   .profile-field,
   .profile-field--full {

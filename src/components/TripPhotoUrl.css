@@ -1,0 +1,19 @@
+.trip-photo-url {
+  display: block;
+  box-sizing: border-box;
+}
+
+.trip-photo-url--img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.trip-photo-url--placeholder {
+  width: 100%;
+  height: 100%;
+  min-height: 48px;
+  background: linear-gradient(135deg, rgba(var(--brand-rgb, 45, 106, 143), 0.12), rgba(0, 0, 0, 0.04));
+  border: 1px solid rgba(var(--brand-rgb, 45, 106, 143), 0.12);
+}

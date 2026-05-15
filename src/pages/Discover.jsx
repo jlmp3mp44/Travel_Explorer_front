@@ -12,7 +12,8 @@ import {
 import SearchableSelect from "../components/SearchableSelect";
 import PlaceCategoryCodesFilter from "../components/PlaceCategoryCodesFilter";
 import TripListSkeleton from "../components/skeletons/TripListSkeleton";
-import { tripOwnerDisplayName, tripOwnerId } from "../utils/tripDisplay";
+import TripPhotoUrl from "../components/TripPhotoUrl.jsx";
+import { tripCoverPhotoUrl, tripOwnerDisplayName, tripOwnerId } from "../utils/tripDisplay";
 import "../components/Home.css";
 import "../components/Discover.css";
 
@@ -262,6 +263,15 @@ function Discover() {
                       }
                     }}
                   >
+                    {tripCoverPhotoUrl(trip) ? (
+                      <div className="trip-card-cover-wrap">
+                        <TripPhotoUrl
+                          url={tripCoverPhotoUrl(trip)}
+                          alt={trip.title ? `Cover: ${trip.title}` : "Trip cover"}
+                          className="trip-card-cover__photo"
+                        />
+                      </div>
+                    ) : null}
                     <div className="trip-card-inner">
                       <h3 className="trip-card-title">{trip.title}</h3>
                       {(() => {

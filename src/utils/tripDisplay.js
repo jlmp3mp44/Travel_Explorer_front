@@ -77,3 +77,17 @@ export function extractTripCategoryLabels(trip) {
   }
   return labels;
 }
+
+/** First itinerary photo URL on trip list/detail payloads (camelCase or snake_case). */
+export function tripCoverPhotoUrl(trip) {
+  if (!trip || typeof trip !== "object") return "";
+  const u = trip.coverPhotoUrl ?? trip.cover_photo_url;
+  return u != null && String(u).trim() !== "" ? String(u).trim() : "";
+}
+
+/** Place photo from `PlaceResponse` (or normalized place object). */
+export function placePhotoUrl(place) {
+  if (!place || typeof place !== "object") return "";
+  const u = place.photoUrl ?? place.photo_url;
+  return u != null && String(u).trim() !== "" ? String(u).trim() : "";
+}

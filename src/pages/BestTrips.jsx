@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { tripOwnerDisplayName, tripOwnerId } from "../utils/tripDisplay";
+import { tripCoverPhotoUrl, tripOwnerDisplayName, tripOwnerId } from "../utils/tripDisplay";
 import { fetchPublicTripsList } from "../api/tripPublic";
 import { friendlyNetworkError } from "../utils/friendlyErrors";
 import TripListSkeleton from "../components/skeletons/TripListSkeleton";
+import TripPhotoUrl from "../components/TripPhotoUrl.jsx";
 import "../components/Home.css";
 import "../components/Discover.css";
 
@@ -107,6 +108,15 @@ function BestTrips() {
                         }
                       }}
                     >
+                      {tripCoverPhotoUrl(trip) ? (
+                        <div className="trip-card-cover-wrap">
+                          <TripPhotoUrl
+                            url={tripCoverPhotoUrl(trip)}
+                            alt={trip.title ? `Cover: ${trip.title}` : "Trip cover"}
+                            className="trip-card-cover__photo"
+                          />
+                        </div>
+                      ) : null}
                       <div className="trip-card-inner">
                         <h3 className="trip-card-title">{trip.title}</h3>
                         {(() => {

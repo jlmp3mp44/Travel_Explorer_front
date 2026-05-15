@@ -437,6 +437,24 @@ a.home-hero-inline-link {
   background: var(--brand-strip);
 }
 
+.trip-card-cover-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  max-height: 168px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: rgba(var(--brand-rgb), 0.06);
+}
+
+.trip-card-cover-wrap .trip-card-cover__photo.trip-photo-url--img,
+.trip-card-cover-wrap .trip-card-cover__photo.trip-photo-url--placeholder {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
 .trip-card-inner {
   padding: 14px 16px 16px;
   display: flex;

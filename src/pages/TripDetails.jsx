@@ -32,6 +32,8 @@ import { useAuth } from "../context/AuthContext";
 import { isTripOwnerFromPayload } from "../utils/tripOwnership";
 import {
   extractTripCategoryLabels,
+  placePhotoUrl,
+  tripCoverPhotoUrl,
   tripOwnerDisplayName,
   tripOwnerId,
 } from "../utils/tripDisplay";
@@ -42,6 +44,7 @@ import {
   removePersistedActivityRating,
 } from "../utils/tripRatingStorage";
 import TripRouteMap from "../components/TripRouteMap";
+import TripPhotoUrl from "../components/TripPhotoUrl.jsx";
 import TripDetailsSkeleton from "../components/skeletons/TripDetailsSkeleton";
 import "../components/TripDetails.css";
 
@@ -104,35 +107,41 @@ function ActivityTrashIcon() {
   );
 }
 
-function StarPicker({ value, onPick, disabled, label = "Rate" }) {
+function StarPicker({ value, onPick, disabled, label = "Rate", pulse = false }) {
   const v = value != null && value >= 1 && value <= 5 ? value : null;
   return (
     <div
-      className="trip-star-picker"
-      role="radiogroup"
-      aria-label={label}
-      aria-valuemin={1}
-      aria-valuemax={5}
-      aria-valuenow={v ?? undefined}
+      className={["trip-star-picker-wrap", pulse && "trip-star-picker-wrap--pulse"]
+        .filter(Boolean)
+        .join(" ")}
     >
-      {[1, 2, 3, 4, 5].map((s) => (
-        <button
-          key={s}
-          type="button"
-          className={[
-            "trip-star-picker__btn",
-            v != null && s <= v ? "trip-star-picker__btn--filled" : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          disabled={disabled}
-          onClick={() => onPick(s)}
-          aria-label={`${label}: ${s} out of 5 stars`}
-          aria-pressed={v != null && s <= v ? "true" : "false"}
-        >
-          ★
-        </button>
-      ))}
+      <div
+        className="trip-star-picker"
+        role="radiogroup"
+        aria-label={label}
+        aria-valuemin={1}
+        aria-valuemax={5}
+        aria-valuenow={v ?? undefined}
+      >
+        {[1, 2, 3, 4, 5].map((s) => (
+          <button
+            key={s}
+            type="button"
+            className={[
+              "trip-star-picker__btn",
+              v != null && s <= v ? "trip-star-picker__btn--filled" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            disabled={disabled}
+            onClick={() => onPick(s)}
+            aria-label={`${label}: ${s} out of 5 stars`}
+            aria-pressed={v != null && s <= v ? "true" : "false"}
+          >
+            ★
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -209,6 +218,8 @@ function TripDetails() {
   const [shareStatus, setShareStatus] = useState("");
   /** Fallback when API omits user rating on GET */
   const [localRatings, setLocalRatings] = useState({ trip: undefined, activities: {} });
+  /** Brief highlight after saving a rating (`trip` | `act:${id}`). */
+  const [ratingPulseKey, setRatingPulseKey] = useState(null);
   /** Bumps when persisted activity ratings are removed so `storedRatings` re-reads localStorage. */
   const [ratingStorageRev, setRatingStorageRev] = useState(0);
   /** Inline two-step delete (no blocking browser dialog). */
@@ -287,6 +298,7 @@ function TripDetails() {
   const tripCategoryLabels = useMemo(() => extractTripCategoryLabels(trip), [trip]);
   const tripOwnerName = useMemo(() => tripOwnerDisplayName(trip), [trip]);
   const tripOwnerProfileId = useMemo(() => tripOwnerId(trip), [trip]);
+  const tripCoverPhotoUrlStr = useMemo(() => tripCoverPhotoUrl(trip), [trip]);
 
   /** Styled itinerary in a new tab; `?auto=1` opens the browser print / Save as PDF dialog. */
   const handleDownloadPdf = useCallback(() => {
@@ -350,6 +362,8 @@ function TripDetails() {
         await postTripRating(trip.id, user.id, stars);
         persistUserTripRating(user.id, trip.id, { trip: stars });
         setLocalRatings((prev) => ({ ...prev, trip: stars }));
+        setRatingPulseKey("trip");
+        window.setTimeout(() => setRatingPulseKey((k) => (k === "trip" ? null : k)), 1100);
         await refetchTrip();
       } catch (err) {
         setActionError(err instanceof Error ? err.message : "Could not save rating.");
@@ -374,6 +388,9 @@ function TripDetails() {
           ...prev,
           activities: { ...prev.activities, [activityId]: stars },
         }));
+        const pulse = `act:${activityId}`;
+        setRatingPulseKey(pulse);
+        window.setTimeout(() => setRatingPulseKey((k) => (k === pulse ? null : k)), 1100);
         await refetchTrip();
       } catch (err) {
         setActionError(err instanceof Error ? err.message : "Could not save rating.");
@@ -1043,7 +1060,18 @@ function TripDetails() {
 
       <div className="trip-details-grid">
         <div className="trip-details-main">
-          <header className="trip-hero">
+          <header className="trip-hero" id="trip-overview">
+            <div className="trip-hero-layout">
+              {tripCoverPhotoUrlStr ? (
+                <div className="trip-hero-cover-wrap">
+                  <TripPhotoUrl
+                    url={tripCoverPhotoUrlStr}
+                    alt={heroTitle ? `Cover image for ${heroTitle}` : "Trip cover"}
+                    className="trip-hero-cover__photo"
+                  />
+                </div>
+              ) : null}
+              <div className="trip-hero-body">
             <h1>{heroTitle}</h1>
             {trip.desc && <p className="trip-hero-desc">{trip.desc}</p>}
             <div className="trip-meta-bar">
@@ -1053,15 +1081,6 @@ function TripDetails() {
                 </span>
                 {trip.startDate} — {trip.endDate}
               </span>
-              {(trip.averageRating != null || (trip.ratingCount ?? 0) > 0) && (
-                <span className="trip-meta-pill">
-                  <span className="icon" aria-hidden="true">
-                    ★
-                  </span>
-                  {formatAvg(trip.averageRating) ?? "—"} · {trip.ratingCount ?? 0}{" "}
-                  {trip.ratingCount === 1 ? "rating" : "ratings"}
-                </span>
-              )}
               {intensityLabel && (
                 <span className="trip-meta-pill trip-meta-pill--pace" title="Trip pace">
                   <span className="icon" aria-hidden="true">
@@ -1101,35 +1120,131 @@ function TripDetails() {
                 </span>
               </div>
             ) : null}
-            <div className="trip-hero-rating">
-              {user?.id != null ? (
-                <div className="trip-hero-rating-row">
-                  <span className="trip-hero-rating-label">Rate this trip</span>
-                  <StarPicker
-                    value={tripStarValue}
-                    onPick={handleRateTrip}
-                    disabled={!!busy}
-                    label="Rate this trip"
-                  />
+            <div className="trip-hero-rating" aria-label="Trip ratings">
+              <div
+                className={[
+                  "trip-rating-unified",
+                  user?.id != null && tripStarValue != null && "trip-rating-unified--user-rated",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
+                <div className="trip-rating-unified__section">
+                  <span className="trip-rating-unified__label">Everyone’s average</span>
+                  <p className="trip-rating-unified__text">
+                    {trip.averageRating != null || (trip.ratingCount ?? 0) > 0 ? (
+                      <>
+                        <span className="trip-rating-unified__star" aria-hidden="true">
+                          ★
+                        </span>{" "}
+                        <strong>{formatAvg(trip.averageRating) ?? "—"}</strong>
+                        <span className="trip-rating-unified__meta">
+                          {" "}
+                          · {trip.ratingCount ?? 0}{" "}
+                          {(trip.ratingCount ?? 0) === 1 ? "rating" : "ratings"} from other
+                          travellers
+                        </span>
+                      </>
+                    ) : (
+                      <span className="trip-rating-unified__muted">
+                        No ratings from other travellers yet.
+                      </span>
+                    )}
+                  </p>
                 </div>
-              ) : (
-                <p className="trip-rate-hint">
-                  <Link to="/login" state={{ from: `/trip/${id}` }}>
-                    Sign in
-                  </Link>{" "}
-                  to rate this trip.
-                </p>
-              )}
+                {user?.id != null ? (
+                  <>
+                    <div className="trip-rating-unified__divider" aria-hidden="true" />
+                    <div className="trip-rating-unified__section">
+                      <span className="trip-rating-unified__label">
+                        {tripStarValue != null
+                          ? `Your rating (${tripStarValue} of 5)`
+                          : "Your rating"}
+                      </span>
+                      <div className="trip-rating-unified__picker-row">
+                        <StarPicker
+                          value={tripStarValue}
+                          onPick={handleRateTrip}
+                          disabled={!!busy}
+                          label="Your rating for this trip"
+                          pulse={ratingPulseKey === "trip"}
+                        />
+                        {tripStarValue != null ? (
+                          <span className="trip-rating-unified__saved" aria-live="polite">
+                            Saved
+                          </span>
+                        ) : (
+                          <span className="trip-rating-unified__hint">Choose stars to add yours</span>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="trip-rating-unified__divider" aria-hidden="true" />
+                    <p className="trip-rating-unified__login-hint trip-rate-hint">
+                      <Link to="/login" state={{ from: `/trip/${id}` }}>
+                        Sign in
+                      </Link>{" "}
+                      to add your own rating.
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+              </div>
             </div>
           </header>
 
-          <section className="trip-days-section" aria-label="Trip plan" id="trip-plan-section">
+          <section
+            className="trip-days-section"
+            aria-labelledby="trip-plan-heading"
+            id="trip-plan-section"
+          >
             {displayDays.length === 0 ? (
               <p className="trip-itinerary-empty">No details yet.</p>
             ) : (
+              <>
+                <div className="trip-plan-section-head">
+                  <h2 id="trip-plan-heading" className="trip-plan-heading">
+                    Itinerary
+                  </h2>
+                  <nav className="trip-plan-jump" aria-label="Jump on this page">
+                    <a className="trip-plan-jump__link" href="#trip-overview">
+                      Overview
+                    </a>
+                    <span className="trip-plan-jump__sep" aria-hidden="true">
+                      ·
+                    </span>
+                    {displayDays.map((d, di) => {
+                      const anchor =
+                        d.id != null ? `trip-day-${d.id}` : `trip-day-idx-${di}`;
+                      return (
+                        <span key={anchor} className="trip-plan-jump__group">
+                          <a className="trip-plan-jump__link" href={`#${anchor}`}>
+                            Day {di + 1}
+                          </a>
+                          {di < displayDays.length - 1 ? (
+                            <span className="trip-plan-jump__sep" aria-hidden="true">
+                              ·
+                            </span>
+                          ) : null}
+                        </span>
+                      );
+                    })}
+                    <span className="trip-plan-jump__sep" aria-hidden="true">
+                      ·
+                    </span>
+                    <a className="trip-plan-jump__link" href="#trip-route-map">
+                      Map
+                    </a>
+                  </nav>
+                </div>
               <div className="trip-days-scroll" role="region" aria-label="Daily plan">
                 {displayDays.map((day, index) => {
                   const dayKey = day.id != null ? `day-${day.id}` : `${day.date}-${index}`;
+                  const dayAnchorId =
+                    day.id != null ? `trip-day-${day.id}` : `trip-day-idx-${index}`;
                   const dayActivities = day.activities ?? [];
                   const canReorder =
                     day.id != null &&
@@ -1137,7 +1252,7 @@ function TripDetails() {
                     dayActivities.every((a) => a.id != null);
 
                   return (
-                    <article key={dayKey} className="trip-day-card">
+                    <article key={dayKey} id={dayAnchorId} className="trip-day-card">
                       <div className="trip-day-header">
                         <div className="trip-day-header__primary">
                           <span className="trip-day-badge">Day {index + 1}</span>
@@ -1175,9 +1290,14 @@ function TripDetails() {
                             : undefined);
                         const actKey =
                           activity.id != null ? `activity-${activity.id}` : `activity-${index}-${i}`;
-                        const showAvg =
-                          activity.averageRating != null || (activity.ratingCount ?? 0) > 0;
                         const dndKey = day.id != null ? activityDndKey(day.id, i) : null;
+                        const heroPhotoUrl =
+                          displayPlacesList.map((p) => placePhotoUrl(p)).find((u) => u && u.trim()) ||
+                          "";
+                        const primaryPlaceTitle =
+                          displayPlacesList[0]?.title != null
+                            ? String(displayPlacesList[0].title)
+                            : "Stop";
                         return (
                           <div
                             key={actKey}
@@ -1213,72 +1333,178 @@ function TripDetails() {
                                   : "trip-activity-main trip-activity-main--solo"
                               }
                             >
-                            <div className="trip-activity-toolbar">
-                              {isTripOwner && day.id != null && activity.id != null && (
-                                <div
-                                  className="trip-activity-sq-actions"
-                                  role="group"
-                                  aria-label="Remove stop"
-                                >
-                                  <button
-                                    type="button"
-                                    className="trip-activity-sq trip-activity-sq--danger"
-                                    onClick={() => openDeleteActivityModal(activity.id)}
-                                    disabled={!!busy}
-                                    title="Remove this stop"
-                                    aria-label="Remove this stop"
+                              <div className="trip-activity-body">
+                                <div className="trip-activity-media">
+                                  <figure className="trip-activity-media__frame">
+                                    <TripPhotoUrl
+                                      url={heroPhotoUrl}
+                                      alt={
+                                        heroPhotoUrl
+                                          ? `Photo: ${primaryPlaceTitle}`
+                                          : "No photo for this stop"
+                                      }
+                                      className="trip-activity-media__photo"
+                                    />
+                                  </figure>
+                                </div>
+                                <div className="trip-activity-content">
+                                  {showTimes ? (
+                                    <div className="trip-activity-time">
+                                      {activity.startTime} – {activity.endTime}
+                                    </div>
+                                  ) : null}
+                                  {displayPlacesList.length > 0 ? (
+                                    <ul
+                                      className="trip-activity-place-titles"
+                                      aria-label="Places in this stop"
+                                    >
+                                      {displayPlacesList.map((place, j) => (
+                                        <li key={j} className="trip-activity-place-titles__item">
+                                          <span className="trip-place-index">
+                                            {stopsBefore + j + 1}.
+                                          </span>
+                                          <span className="trip-activity-place-titles__name">
+                                            {place.title}
+                                          </span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  ) : (
+                                    <p className="trip-activity-empty trip-activity-empty--in-content">
+                                      No place name in this stop.
+                                    </p>
+                                  )}
+                                  <div className="trip-activity-footer">
+                                  <div className="trip-activity-toolbar">
+                                    {isTripOwner && day.id != null && activity.id != null && (
+                                      <div
+                                        className="trip-activity-sq-actions"
+                                        role="group"
+                                        aria-label="Remove stop"
+                                      >
+                                        <button
+                                          type="button"
+                                          className="trip-activity-sq trip-activity-sq--danger"
+                                          onClick={() => openDeleteActivityModal(activity.id)}
+                                          disabled={!!busy}
+                                          title="Remove this stop"
+                                          aria-label="Remove this stop"
+                                        >
+                                          <ActivityTrashIcon />
+                                        </button>
+                                      </div>
+                                    )}
+                                    {isTripOwner && activity.id != null && (
+                                      <button
+                                        type="button"
+                                        className="trip-activity-replace-btn"
+                                        onClick={(e) =>
+                                          openReplaceActivityReasonModal(
+                                            activity.id,
+                                            e.currentTarget
+                                          )
+                                        }
+                                        disabled={!!busy}
+                                        title="Change this stop — smart suggestion or search"
+                                      >
+                                        Change activity
+                                      </button>
+                                    )}
+                                  </div>
+                                  <div
+                                    className="trip-activity-ratings"
+                                    aria-label="Ratings for this stop"
                                   >
-                                    <ActivityTrashIcon />
-                                  </button>
-                                </div>
-                              )}
-                              {isTripOwner && activity.id != null && (
-                                <button
-                                  type="button"
-                                  className="trip-activity-replace-btn"
-                                  onClick={(e) => openReplaceActivityReasonModal(activity.id, e.currentTarget)}
-                                  disabled={!!busy}
-                                  title="Change this stop — smart suggestion or search"
-                                >
-                                  Change activity
-                                </button>
-                              )}
-                              {showAvg && (
-                                <span className="trip-activity-rating-summary" title="Average rating">
-                                  ★ {formatAvg(activity.averageRating) ?? "—"} · {activity.ratingCount ?? 0}
-                                </span>
-                              )}
-                              {user?.id != null && activity.id != null && (
-                                <div className="trip-activity-rate">
-                                  <span className="trip-activity-rate-label">Rate</span>
-                                  <StarPicker
-                                    value={activityStarValue}
-                                    onPick={(stars) => handleRateActivity(activity.id, stars)}
-                                    disabled={!!busy}
-                                    label="Rate this stop"
-                                  />
-                                </div>
-                              )}
-                            </div>
-                            {showTimes ? (
-                              <div className="trip-activity-time">
-                                {activity.startTime} – {activity.endTime}
+                                    <div
+                                      className={[
+                                        "trip-rating-unified trip-rating-unified--compact",
+                                        user?.id != null &&
+                                          activity.id != null &&
+                                          activityStarValue != null &&
+                                          "trip-rating-unified--user-rated",
+                                      ]
+                                        .filter(Boolean)
+                                        .join(" ")}
+                                    >
+                                      <div className="trip-rating-unified__section">
+                                        <span className="trip-rating-unified__label">
+                                          Everyone’s average
+                                        </span>
+                                        <p className="trip-rating-unified__text">
+                                          {activity.averageRating != null ||
+                                          (activity.ratingCount ?? 0) > 0 ? (
+                                            <>
+                                              <span
+                                                className="trip-rating-unified__star"
+                                                aria-hidden="true"
+                                              >
+                                                ★
+                                              </span>{" "}
+                                              <strong>
+                                                {formatAvg(activity.averageRating) ?? "—"}
+                                              </strong>
+                                              <span className="trip-rating-unified__meta">
+                                                {" "}
+                                                · {activity.ratingCount ?? 0}{" "}
+                                                {(activity.ratingCount ?? 0) === 1
+                                                  ? "rating"
+                                                  : "ratings"}{" "}
+                                                from other travellers
+                                              </span>
+                                            </>
+                                          ) : (
+                                            <span className="trip-rating-unified__muted">
+                                              No ratings from other travellers yet.
+                                            </span>
+                                          )}
+                                        </p>
+                                      </div>
+                                      {user?.id != null && activity.id != null ? (
+                                        <>
+                                          <div
+                                            className="trip-rating-unified__divider"
+                                            aria-hidden="true"
+                                          />
+                                          <div className="trip-rating-unified__section">
+                                            <span className="trip-rating-unified__label">
+                                              {activityStarValue != null
+                                                ? `Your rating (${activityStarValue} of 5)`
+                                                : "Your rating"}
+                                            </span>
+                                            <div className="trip-rating-unified__picker-row">
+                                              <StarPicker
+                                                value={activityStarValue}
+                                                onPick={(stars) =>
+                                                  handleRateActivity(activity.id, stars)
+                                                }
+                                                disabled={!!busy}
+                                                label="Your rating for this stop"
+                                                pulse={
+                                                  ratingPulseKey === `act:${activity.id}`
+                                                }
+                                              />
+                                              {activityStarValue != null ? (
+                                                <span
+                                                  className="trip-rating-unified__saved"
+                                                  aria-live="polite"
+                                                >
+                                                  Saved
+                                                </span>
+                                              ) : (
+                                                <span className="trip-rating-unified__hint">
+                                                  Choose stars to add yours
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                  </div>
                               </div>
-                            ) : null}
-
-                            {displayPlacesList.length > 0 ? (
-                              <ul className="trip-places">
-                                {displayPlacesList.map((place, j) => (
-                                  <li key={j}>
-                                    <span className="trip-place-index">{stopsBefore + j + 1}.</span>
-                                    {place.title}
-                                  </li>
-                                ))}
-                              </ul>
-                            ) : (
-                              <p className="trip-activity-empty">No place name in this stop.</p>
-                            )}
                             </div>
+                          </div>
                           </div>
                         );
                       })}
@@ -1286,11 +1512,12 @@ function TripDetails() {
                   );
                 })}
               </div>
+              </>
             )}
           </section>
         </div>
 
-        <div className="trip-map-column">
+        <div className="trip-map-column" id="trip-route-map">
           <div className="trip-map-wrap">
             <TripRouteMap
               trip={tripSnapshotForMap ?? trip}
@@ -1497,6 +1724,7 @@ function TripDetails() {
               {placeSearchResults.map((p, idx) => {
                 const key = p.id ?? p.placeId ?? idx;
                 const { name, addr } = placeSearchRowLabel(p);
+                const pUrl = placePhotoUrl(p);
                 return (
                   <li key={String(key)}>
                     <button
@@ -1505,10 +1733,21 @@ function TripDetails() {
                       disabled={!!busy}
                       onClick={() => handlePickSearchPlace(p)}
                     >
-                      <span className="trip-change-activity-panel__result-name">{name}</span>
-                      {addr ? (
-                        <span className="trip-change-activity-panel__result-addr">{addr}</span>
+                      {pUrl ? (
+                        <div className="trip-change-activity-panel__result-thumb">
+                          <TripPhotoUrl
+                            url={pUrl}
+                            alt=""
+                            className="trip-change-activity-panel__result-photo"
+                          />
+                        </div>
                       ) : null}
+                      <span className="trip-change-activity-panel__result-text">
+                        <span className="trip-change-activity-panel__result-name">{name}</span>
+                        {addr ? (
+                          <span className="trip-change-activity-panel__result-addr">{addr}</span>
+                        ) : null}
+                      </span>
                     </button>
                   </li>
                 );
@@ -1597,6 +1836,7 @@ function TripDetails() {
               {addPlaceSearchResults.map((p, idx) => {
                 const key = p.id ?? p.placeId ?? idx;
                 const { name, addr } = placeSearchRowLabel(p);
+                const pUrl = placePhotoUrl(p);
                 return (
                   <li key={String(key)}>
                     <button
@@ -1605,10 +1845,21 @@ function TripDetails() {
                       disabled={!!busy}
                       onClick={() => handleAddPickSearchPlace(p)}
                     >
-                      <span className="trip-change-activity-panel__result-name">{name}</span>
-                      {addr ? (
-                        <span className="trip-change-activity-panel__result-addr">{addr}</span>
+                      {pUrl ? (
+                        <div className="trip-change-activity-panel__result-thumb">
+                          <TripPhotoUrl
+                            url={pUrl}
+                            alt=""
+                            className="trip-change-activity-panel__result-photo"
+                          />
+                        </div>
                       ) : null}
+                      <span className="trip-change-activity-panel__result-text">
+                        <span className="trip-change-activity-panel__result-name">{name}</span>
+                        {addr ? (
+                          <span className="trip-change-activity-panel__result-addr">{addr}</span>
+                        ) : null}
+                      </span>
                     </button>
                   </li>
                 );
