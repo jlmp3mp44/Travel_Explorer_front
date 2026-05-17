@@ -362,8 +362,9 @@ export async function fetchUserPublicTripsList(userId, options = {}) {
 /**
  * GET PDF export. Triggers browser download using `Content-Disposition` filename when present.
  */
-export async function downloadTripPdf(tripId) {
-  const res = await fetch(apiUrl(`/api/public/trips/${encodeURIComponent(tripId)}/pdf`), {
+export async function downloadTripPdf(tripId, { largePhotos = true } = {}) {
+  const qs = largePhotos ? "?largePhotos=true" : "";
+  const res = await fetch(apiUrl(`/api/public/trips/${encodeURIComponent(tripId)}/pdf${qs}`), {
     credentials: "include",
   });
   if (!res.ok) {

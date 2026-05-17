@@ -14,6 +14,7 @@ import {
   searchTripPlaces,
   addTripActivityAuto,
   updatePublicTrip,
+  downloadTripPdf,
 } from "../api/tripPublic";
 import {
   friendlyNetworkError,
@@ -25,9 +26,16 @@ import {
   getActivityPlacesForDisplay,
   mergeTripWithPostResponse,
   resolveTripDaysForDisplay,
-  stripActivityUserRatingForId,
   unwrapTripPayload,
 } from "../utils/tripItinerary";
+import {
+  addPendingActivityToTrip,
+  isPendingActivityId,
+  nextPendingActivityId,
+  removeActivityFromTrip,
+  reorderActivitiesInTrip,
+  replaceActivityPlaceInTrip,
+} from "../utils/tripItineraryDraft";
 import InterestingPlaceToggle from "../components/InterestingPlaceToggle";
 import { listInterestingPlaces } from "../api/interestingPlaces";
 import { useAuth } from "../context/AuthContext";
@@ -251,7 +259,11 @@ function TripDetails() {
   const [changeActivityReason, setChangeActivityReason] = useState("DONT_WANT_TO_GO");
   const [canEditVisibility, setCanEditVisibility] = useState(null);
   const [visibilityBusy, setVisibilityBusy] = useState(false);
-  const [shareStatus, setShareStatus] = useState("");
+  /** Unsaved itinerary edits — flushed on Save. */
+  const [pendingDeletes, setPendingDeletes] = useState([]);
+  const [pendingAdds, setPendingAdds] = useState([]);
+  const [pendingReplaces, setPendingReplaces] = useState([]);
+  const [pendingReorderByDay, setPendingReorderByDay] = useState({});
   /** Fallback when API omits user rating on GET */
   const [localRatings, setLocalRatings] = useState({ trip: undefined, activities: {} });
   /** Brief highlight after saving a rating (`trip` | `act:${id}`). */
@@ -273,33 +285,37 @@ function TripDetails() {
     return resolveTripDaysForDisplay(trip).days;
   }, [trip]);
 
-  /**
-   * Map geocoding is expensive; `TripRouteMap` only reloads when this snapshot changes.
-   * Edits keep the live `trip` in sync; user clicks "Update map" to copy `trip` here.
-   */
+  /** Map uses last saved itinerary; updates when there are no unsaved edits. */
   const [tripSnapshotForMap, setTripSnapshotForMap] = useState(null);
 
   useEffect(() => {
     setTripSnapshotForMap(null);
+    setPendingDeletes([]);
+    setPendingAdds([]);
+    setPendingReplaces([]);
+    setPendingReorderByDay({});
   }, [id]);
 
+  const itineraryDirty = useMemo(
+    () =>
+      pendingDeletes.length > 0 ||
+      pendingAdds.length > 0 ||
+      pendingReplaces.length > 0 ||
+      Object.keys(pendingReorderByDay).length > 0,
+    [pendingDeletes, pendingAdds, pendingReplaces, pendingReorderByDay]
+  );
+
   useEffect(() => {
-    if (trip && String(trip.id) === String(id)) {
-      setTripSnapshotForMap((prev) => (prev == null ? trip : prev));
-    }
-  }, [trip, id]);
-
-  const mapDisplayDays = useMemo(() => {
-    const t = tripSnapshotForMap;
-    if (!t) return [];
-    return resolveTripDaysForDisplay(t).days;
-  }, [tripSnapshotForMap]);
-
-  const handleUpdateRouteMap = useCallback(() => {
-    if (trip && String(trip.id) === String(id)) {
+    if (trip && String(trip.id) === String(id) && !itineraryDirty) {
       setTripSnapshotForMap(trip);
     }
-  }, [trip, id]);
+  }, [trip, id, itineraryDirty]);
+
+  const mapDisplayDays = useMemo(() => {
+    const t = tripSnapshotForMap ?? trip;
+    if (!t) return [];
+    return resolveTripDaysForDisplay(t).days;
+  }, [tripSnapshotForMap, trip]);
 
   const performDeleteTrip = useCallback(async () => {
     if (!trip?.id) return;
@@ -336,10 +352,17 @@ function TripDetails() {
   const tripOwnerProfileId = useMemo(() => tripOwnerId(trip), [trip]);
   const tripCoverPhotoUrlStr = useMemo(() => tripCoverPhotoUrl(trip), [trip]);
 
-  /** Styled itinerary in a new tab; `?auto=1` opens the browser print / Save as PDF dialog. */
-  const handleDownloadPdf = useCallback(() => {
+  const handleDownloadPdf = useCallback(async () => {
     if (!trip?.id) return;
-    window.open(`/trip/${trip.id}/print?auto=1`, "_blank", "noopener,noreferrer");
+    setActionError("");
+    setBusy("pdf");
+    try {
+      await downloadTripPdf(trip.id);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not download the PDF.");
+    } finally {
+      setBusy(null);
+    }
   }, [trip?.id]);
 
   /** Cached ratings from localStorage (survives reload when GET omits userRating). */
@@ -366,7 +389,7 @@ function TripDetails() {
   const isTripOwner = useMemo(() => isTripOwnerFromPayload(trip, user), [trip, user]);
 
   const refetchTrip = useCallback(async () => {
-    if (!id) return;
+    if (!id) return null;
     setRefreshing(true);
     setLoadError("");
     try {
@@ -376,18 +399,74 @@ function TripDetails() {
       const data = await parseResponseJson(res);
       if (!res.ok) {
         setLoadError(friendlyPublicLoadError(res.status, "trip"));
-        return;
+        return null;
       }
       const merged = mergeTripWithPostResponse(unwrapTripPayload(data), postCreateSnapshot);
       persistTripSnapshot(merged);
       setTrip(merged);
+      return merged;
     } catch (err) {
       console.error("Error fetching trip:", err);
       setLoadError(friendlyNetworkError(err));
+      return null;
     } finally {
       setRefreshing(false);
     }
   }, [id, postCreateSnapshot, user?.id]);
+
+  const handleSaveItinerary = useCallback(async () => {
+    if (!trip?.id || !itineraryDirty) return;
+    setActionError("");
+    setBusy("save-itinerary");
+    try {
+      for (const del of pendingDeletes) {
+        await deleteTripActivity(trip.id, del.activityId, { reason: del.reason });
+      }
+      for (const add of pendingAdds) {
+        if (add.mode === "auto") {
+          await addTripActivityAuto(trip.id, add.dayId);
+        } else {
+          await addDayActivity(trip.id, add.dayId, { placeId: add.placeId });
+        }
+      }
+      for (const rep of pendingReplaces) {
+        if (rep.mode === "smart") {
+          await replaceActivitySmart(trip.id, rep.activityId, { reason: rep.reason });
+        } else {
+          await replaceActivityWithPlace(trip.id, rep.activityId, {
+            placeId: rep.placeId,
+            reason: rep.reason,
+          });
+        }
+      }
+      for (const [dayId, orderedIds] of Object.entries(pendingReorderByDay)) {
+        const realIds = orderedIds.filter((aid) => !isPendingActivityId(aid));
+        if (realIds.length >= 2) {
+          await reorderDayActivities(trip.id, dayId, realIds);
+        }
+      }
+      const merged = await refetchTrip();
+      if (merged) {
+        setPendingDeletes([]);
+        setPendingAdds([]);
+        setPendingReplaces([]);
+        setPendingReorderByDay({});
+        setTripSnapshotForMap(merged);
+      }
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not save itinerary changes.");
+    } finally {
+      setBusy(null);
+    }
+  }, [
+    trip?.id,
+    itineraryDirty,
+    pendingDeletes,
+    pendingAdds,
+    pendingReplaces,
+    pendingReorderByDay,
+    refetchTrip,
+  ]);
 
   const handleRateTrip = useCallback(
     async (stars) => {
@@ -437,24 +516,14 @@ function TripDetails() {
     [trip?.id, user?.id, refetchTrip]
   );
 
-  const handleReorderDay = useCallback(
-    async (day, reorderedActivities) => {
-      if (!trip?.id || day.id == null) return;
-      const ids = reorderedActivities.map((a) => a.id).filter((x) => x != null);
-      if (ids.length !== reorderedActivities.length) return;
-      setActionError("");
-      setBusy(`reorder:${day.id}`);
-      try {
-        await reorderDayActivities(trip.id, day.id, ids);
-        await refetchTrip();
-      } catch (err) {
-        setActionError(err instanceof Error ? err.message : "Could not reorder activities.");
-      } finally {
-        setBusy(null);
-      }
-    },
-    [trip?.id, refetchTrip]
-  );
+  const applyLocalReorder = useCallback((day, reorderedActivities, fromIndex, toIndex) => {
+    if (day.id == null || !trip) return;
+    setTrip((prev) => reorderActivitiesInTrip(prev, day.id, fromIndex, toIndex));
+    setPendingReorderByDay((prev) => ({
+      ...prev,
+      [day.id]: reorderedActivities.map((a) => a.id).filter((x) => x != null),
+    }));
+  }, [trip]);
 
   const handleActivityDragStart = useCallback((e, day, fromIndex) => {
     if (day.id == null) return;
@@ -496,16 +565,23 @@ function TripDetails() {
       }
       const acts = [...(day.activities ?? [])];
       const reordered = moveItem(acts, fromIndex, toIndex);
-      handleReorderDay(day, reordered);
+      applyLocalReorder(day, reordered, fromIndex, toIndex);
       setDndDraggingKey(null);
       setDndDropTargetKey(null);
     },
-    [handleActivityDragEnd, handleReorderDay]
+    [handleActivityDragEnd, applyLocalReorder]
   );
 
-  const applyActivityChangeTripResponse = useCallback(
-    (activityId, data) => {
-      if (user?.id == null || trip?.id == null) return;
+  const handleDeleteActivityReason = useCallback(
+    (reason) => {
+      if (!trip?.id || user?.id == null || !deleteActivityModal?.activityId) return;
+      const activityId = deleteActivityModal.activityId;
+      if (isPendingActivityId(activityId)) {
+        setPendingAdds((prev) => prev.filter((a) => a.tempId !== activityId));
+      } else {
+        setPendingDeletes((prev) => [...prev, { activityId, reason }]);
+      }
+      setPendingReplaces((prev) => prev.filter((r) => r.activityId !== activityId));
       removePersistedActivityRating(user.id, trip.id, activityId);
       setRatingStorageRev((n) => n + 1);
       setLocalRatings((prev) => {
@@ -514,45 +590,10 @@ function TripDetails() {
         delete activities[String(activityId)];
         return { ...prev, activities };
       });
-      const merged = mergeTripWithPostResponse(unwrapTripPayload(data), postCreateSnapshot);
-      const cleared = stripActivityUserRatingForId(merged, activityId);
-      persistTripSnapshot(cleared);
-      setTrip(cleared);
+      setTrip((prev) => removeActivityFromTrip(prev, activityId));
+      setDeleteActivityModal(null);
     },
-    [user?.id, trip?.id, postCreateSnapshot]
-  );
-
-  const handleDeleteActivityReason = useCallback(
-    async (reason) => {
-      if (!trip?.id || user?.id == null || !deleteActivityModal?.activityId) return;
-      const activityId = deleteActivityModal.activityId;
-      setActionError("");
-      setBusy(`del:${activityId}`);
-      try {
-        const updated = await deleteTripActivity(trip.id, activityId, { reason });
-        removePersistedActivityRating(user.id, trip.id, activityId);
-        setRatingStorageRev((n) => n + 1);
-        setLocalRatings((prev) => {
-          const activities = { ...prev.activities };
-          delete activities[activityId];
-          delete activities[String(activityId)];
-          return { ...prev, activities };
-        });
-        if (updated?.id) {
-          const merged = mergeTripWithPostResponse(updated, postCreateSnapshot);
-          persistTripSnapshot(merged);
-          setTrip(merged);
-        } else {
-          await refetchTrip();
-        }
-        setDeleteActivityModal(null);
-      } catch (err) {
-        setActionError(err instanceof Error ? err.message : "Could not remove this stop.");
-      } finally {
-        setBusy(null);
-      }
-    },
-    [trip?.id, user?.id, deleteActivityModal?.activityId, postCreateSnapshot, refetchTrip]
+    [trip?.id, user?.id, deleteActivityModal?.activityId]
   );
 
   const closeChangeActivityPanel = useCallback(() => {
@@ -635,7 +676,7 @@ function TripDetails() {
   }, [trip?.id, addActivityPanel?.dayId, addPlaceSearchInput]);
 
   const handleAddPickSearchPlace = useCallback(
-    async (place) => {
+    (place) => {
       if (!trip?.id || !addActivityPanel?.dayId || place == null) return;
       const pid = place.id ?? place.placeId;
       if (pid == null) {
@@ -643,52 +684,34 @@ function TripDetails() {
         return;
       }
       const dayId = addActivityPanel.dayId;
+      const tempId = nextPendingActivityId();
       setAddPanelError("");
-      setActionError("");
-      setBusy(`add:${dayId}`);
-      try {
-        const updated = await addDayActivity(trip.id, dayId, { placeId: pid });
-        if (updated?.id) {
-          const merged = mergeTripWithPostResponse(updated, postCreateSnapshot);
-          persistTripSnapshot(merged);
-          setTrip(merged);
-        } else {
-          await refetchTrip();
-        }
-        closeAddActivityPanel();
-      } catch (err) {
-        setAddPanelError(err instanceof Error ? err.message : "Could not add this stop.");
-      } finally {
-        setBusy(null);
-      }
+      setPendingAdds((prev) => [
+        ...prev,
+        { mode: "place", dayId, placeId: pid, tempId, place },
+      ]);
+      setTrip((prev) => addPendingActivityToTrip(prev, dayId, place, tempId));
+      closeAddActivityPanel();
     },
-    [trip?.id, addActivityPanel, postCreateSnapshot, refetchTrip, closeAddActivityPanel]
+    [trip?.id, addActivityPanel, closeAddActivityPanel]
   );
 
-  const handleAddSmartSuggest = useCallback(async () => {
+  const handleAddSmartSuggest = useCallback(() => {
     if (!trip?.id || !addActivityPanel?.dayId) return;
     const dayId = addActivityPanel.dayId;
+    const tempId = nextPendingActivityId();
     setAddPanelError("");
-    setActionError("");
-    setBusy(`add-smart:${dayId}`);
-    try {
-      const data = await addTripActivityAuto(trip.id, dayId);
-      if (data?.id) {
-        const merged = mergeTripWithPostResponse(data, postCreateSnapshot);
-        persistTripSnapshot(merged);
-        setTrip(merged);
-        closeAddActivityPanel();
-        return;
-      }
-      setAddPanelError("Automatic suggestion is unavailable now. Try again in a moment.");
-    } catch (err) {
-      setAddPanelError(
-        err instanceof Error ? err.message : "Could not add a stop automatically."
-      );
-    } finally {
-      setBusy(null);
-    }
-  }, [trip?.id, addActivityPanel?.dayId, postCreateSnapshot, closeAddActivityPanel]);
+    setPendingAdds((prev) => [...prev, { mode: "auto", dayId, tempId }]);
+    setTrip((prev) =>
+      addPendingActivityToTrip(
+        prev,
+        dayId,
+        { title: "Suggested stop (unsaved)" },
+        tempId
+      )
+    );
+    closeAddActivityPanel();
+  }, [trip?.id, addActivityPanel?.dayId, closeAddActivityPanel]);
 
   /** Opens the same reason modal as delete; panel opens after a choice. */
   const openReplaceActivityReasonModal = useCallback(
@@ -722,30 +745,20 @@ function TripDetails() {
     [replaceActivityReasonModal, computeChangePanelPosition]
   );
 
-  const handleSmartSuggest = useCallback(async () => {
+  const handleSmartSuggest = useCallback(() => {
     if (!trip?.id || !changeActivityPanel?.activityId) return;
     const activityId = changeActivityPanel.activityId;
-    setChangePanelError("");
-    setActionError("");
-    setBusy(`smart-replace:${activityId}`);
-    try {
-      const data = await replaceActivitySmart(trip.id, activityId, {
-        reason: changeActivityReason,
-      });
-      applyActivityChangeTripResponse(activityId, data);
-      closeChangeActivityPanel();
-    } catch (err) {
-      setChangePanelError(err instanceof Error ? err.message : "Could not suggest a replacement.");
-    } finally {
-      setBusy(null);
+    if (isPendingActivityId(activityId)) {
+      setChangePanelError("Save this new stop first, or remove it and add again.");
+      return;
     }
-  }, [
-    trip?.id,
-    changeActivityPanel?.activityId,
-    changeActivityReason,
-    applyActivityChangeTripResponse,
-    closeChangeActivityPanel,
-  ]);
+    setChangePanelError("");
+    setPendingReplaces((prev) => [
+      ...prev.filter((r) => r.activityId !== activityId),
+      { activityId, mode: "smart", reason: changeActivityReason },
+    ]);
+    closeChangeActivityPanel();
+  }, [trip?.id, changeActivityPanel?.activityId, changeActivityReason, closeChangeActivityPanel]);
 
   const handlePlaceSearchSubmit = useCallback(async () => {
     if (!trip?.id || !changeActivityPanel?.activityId) return;
@@ -773,7 +786,7 @@ function TripDetails() {
   }, [trip?.id, changeActivityPanel?.activityId, placeSearchInput]);
 
   const handlePickSearchPlace = useCallback(
-    async (place) => {
+    (place) => {
       if (!trip?.id || !changeActivityPanel?.activityId || place == null) return;
       const pid = place.id ?? place.placeId;
       if (pid == null) {
@@ -781,29 +794,25 @@ function TripDetails() {
         return;
       }
       const activityId = changeActivityPanel.activityId;
+      if (isPendingActivityId(activityId)) {
+        setChangePanelError("This stop is not saved yet — remove it and add the place again.");
+        return;
+      }
       setChangePanelError("");
-      setActionError("");
-      setBusy(`place-apply:${activityId}`);
-      try {
-        const data = await replaceActivityWithPlace(trip.id, activityId, {
+      setPendingReplaces((prev) => [
+        ...prev.filter((r) => r.activityId !== activityId),
+        {
+          activityId,
+          mode: "place",
           placeId: pid,
           reason: changeActivityReason,
-        });
-        applyActivityChangeTripResponse(activityId, data);
-        closeChangeActivityPanel();
-      } catch (err) {
-        setChangePanelError(err instanceof Error ? err.message : "Could not apply this place.");
-      } finally {
-        setBusy(null);
-      }
+          place,
+        },
+      ]);
+      setTrip((prev) => replaceActivityPlaceInTrip(prev, activityId, place));
+      closeChangeActivityPanel();
     },
-    [
-      trip?.id,
-      changeActivityPanel?.activityId,
-      changeActivityReason,
-      applyActivityChangeTripResponse,
-      closeChangeActivityPanel,
-    ]
+    [trip?.id, changeActivityPanel?.activityId, changeActivityReason, closeChangeActivityPanel]
   );
 
   const openDeleteActivityModal = useCallback(
@@ -816,18 +825,6 @@ function TripDetails() {
     },
     [user?.id, navigate, id]
   );
-
-  const handleCopyShareLink = useCallback(async () => {
-    const url = typeof window !== "undefined" ? window.location.href : "";
-    if (!url) return;
-    try {
-      await navigator.clipboard.writeText(url);
-      setShareStatus("Link copied to clipboard.");
-    } catch {
-      setShareStatus("Could not copy automatically — copy from the address bar.");
-    }
-    window.setTimeout(() => setShareStatus(""), 3200);
-  }, []);
 
   const handleVisibilityChange = useCallback(
     async (nextPublic) => {
@@ -982,6 +979,7 @@ function TripDetails() {
       const mergedFirst = mergeTripWithPostResponse(first.trip, postCreateSnapshot);
       persistTripSnapshot(mergedFirst);
       setTrip(mergedFirst);
+      setTripSnapshotForMap(mergedFirst);
       setLoading(false);
     })();
 
@@ -1031,30 +1029,25 @@ function TripDetails() {
           ← Back
         </button>
         <div className="trip-details-toolbar-spacer" aria-hidden="true" />
-        <button
-          type="button"
-          className="trip-share-btn"
-          onClick={() => handleCopyShareLink()}
-          disabled={!!busy}
-        >
-          Copy link
-        </button>
+        {isTripOwner && itineraryDirty ? (
+          <button
+            type="button"
+            className="trip-save-itinerary-btn"
+            onClick={() => void handleSaveItinerary()}
+            disabled={!!busy}
+            title="Save itinerary changes and update the map"
+          >
+            {busy === "save-itinerary" ? "Saving…" : "Save changes"}
+          </button>
+        ) : null}
         <button
           type="button"
           className="trip-pdf-btn"
-          onClick={() => handleDownloadPdf()}
+          onClick={() => void handleDownloadPdf()}
           disabled={!!busy}
-          title="Opens a print-ready page in the same style as the app — use Print → Save as PDF"
+          title="Download trip as a PDF file"
         >
-          PDF
-        </button>
-        <button
-          type="button"
-          className="trip-refresh-btn"
-          onClick={() => refetchTrip()}
-          disabled={refreshing || !!busy}
-        >
-          {refreshing ? "Refreshing…" : "Refresh trip"}
+          {busy === "pdf" ? "Preparing PDF…" : "PDF"}
         </button>
         {isTripOwner ? (
           <button
@@ -1084,9 +1077,12 @@ function TripDetails() {
         </p>
       ) : null}
 
-      <p className="trip-share-status" role="status" aria-live="polite" aria-atomic="true">
-        {shareStatus}
-      </p>
+      {itineraryDirty && isTripOwner ? (
+        <p className="trip-unsaved-hint" role="status">
+          You have unsaved itinerary changes. Press <strong>Save changes</strong> to keep them and
+          refresh the map.
+        </p>
+      ) : null}
 
       {actionError ? (
         <p className="trip-action-error" role="alert">
@@ -1596,17 +1592,6 @@ function TripDetails() {
               trip={tripSnapshotForMap ?? trip}
               displayDays={tripSnapshotForMap ? mapDisplayDays : displayDays}
             />
-            <div className="trip-map-column__actions trip-map-column__actions--overlay">
-              <button
-                type="button"
-                className="trip-map-update-btn"
-                onClick={handleUpdateRouteMap}
-                disabled={!!busy || !trip}
-                title="Reload the map with the latest stops (avoids slow reloads on every edit)"
-              >
-                Update map
-              </button>
-            </div>
           </div>
         </div>
       </div>

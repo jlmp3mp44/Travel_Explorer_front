@@ -258,9 +258,16 @@ function Trip() {
         return;
       }
     }
-    if (step === 3 && !budget) {
-      setError("Please enter your budget.");
-      return;
+    if (step === 3) {
+      if (!budget) {
+        setError("Please enter your budget.");
+        return;
+      }
+      const budgetNum = parseInt(budget, 10);
+      if (Number.isNaN(budgetNum) || budgetNum < 0) {
+        setError("Budget must be zero or a positive number.");
+        return;
+      }
     }
     if (step === 4) {
       if (selectedInterests.length === 0) {
@@ -657,9 +664,22 @@ function Trip() {
                   id="trip-budget-input"
                   type="number"
                   min="0"
+                  step="1"
                   placeholder="0"
                   value={budget}
-                  onChange={(e) => setBudget(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "-" || e.key === "e" || e.key === "E" || e.key === "+") {
+                      e.preventDefault();
+                    }
+                  }}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === "") {
+                      setBudget("");
+                      return;
+                    }
+                    if (/^\d+$/.test(v)) setBudget(v);
+                  }}
                 />
               </div>
               <div className="trip-budget-currency">
