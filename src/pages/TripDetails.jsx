@@ -14,8 +14,9 @@ import {
   searchTripPlaces,
   addTripActivityAuto,
   updatePublicTrip,
-  downloadTripPdf,
 } from "../api/tripPublic";
+import TripPrintDocument from "../components/TripPrintDocument";
+import { exportTripPdfFromElement, tripPdfFilename } from "../utils/exportTripPdf";
 import {
   friendlyNetworkError,
   friendlyPublicLoadError,
@@ -204,6 +205,8 @@ function TripDetails() {
   const [refreshing, setRefreshing] = useState(false);
   const [actionError, setActionError] = useState("");
   const [busy, setBusy] = useState(null);
+  const [pdfCaptureActive, setPdfCaptureActive] = useState(false);
+  const pdfCaptureRef = useRef(null);
 
   /** Pre-loaded "interesting places" for this user so each toggle starts in the right state. */
   const [interestingSavedSet, setInterestingSavedSet] = useState(() => new Set());
@@ -356,14 +359,24 @@ function TripDetails() {
     if (!trip?.id) return;
     setActionError("");
     setBusy("pdf");
+    setPdfCaptureActive(true);
     try {
-      await downloadTripPdf(trip.id);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      });
+      const el = pdfCaptureRef.current;
+      if (!el) {
+        throw new Error("Could not prepare PDF.");
+      }
+      await exportTripPdfFromElement(el, { filename: tripPdfFilename(trip) });
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Could not download the PDF.");
     } finally {
+      setPdfCaptureActive(false);
       setBusy(null);
     }
-  }, [trip?.id]);
+  }, [trip]);
 
   /** Cached ratings from localStorage (survives reload when GET omits userRating). */
   const storedRatings = useMemo(() => {
@@ -1925,6 +1938,12 @@ function TripDetails() {
             </ul>
           </div>
         </>
+      ) : null}
+
+      {pdfCaptureActive ? (
+        <div className="trip-pdf-capture-host" aria-hidden="true">
+          <TripPrintDocument ref={pdfCaptureRef} trip={trip} user={user} forPdfExport />
+        </div>
       ) : null}
     </div>
   );

@@ -5,7 +5,13 @@ import "./TripPhotoUrl.css";
  * Lazy-loaded trip/place photo from backend `coverPhotoUrl` / `photoUrl`.
  * Falls back to a neutral block on missing URL or load error.
  */
-export default function TripPhotoUrl({ url, alt = "", className = "" }) {
+export default function TripPhotoUrl({
+  url,
+  alt = "",
+  className = "",
+  crossOrigin,
+  loading = "lazy",
+}) {
   const [broken, setBroken] = useState(false);
   const src = typeof url === "string" ? url.trim() : "";
   const showImg = src !== "" && !broken;
@@ -22,8 +28,9 @@ export default function TripPhotoUrl({ url, alt = "", className = "" }) {
       src={src}
       alt={alt}
       className={rootClass}
-      loading="lazy"
+      loading={loading}
       decoding="async"
+      crossOrigin={crossOrigin}
       onError={() => setBroken(true)}
     />
   );

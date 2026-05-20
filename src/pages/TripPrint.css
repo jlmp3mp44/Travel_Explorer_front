@@ -43,6 +43,38 @@
   background: rgba(220, 248, 234, 1);
 }
 
+.trip-print-action--secondary {
+  border-color: rgba(var(--brand-rgb, 45, 106, 143), 0.35);
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--brand, #2d6a8f);
+}
+
+.trip-print-action--secondary:hover {
+  background: rgba(245, 250, 255, 1);
+}
+
+/** Off-screen host for PDF capture from trip details (html2canvas). */
+.trip-pdf-capture-host {
+  position: fixed;
+  left: -12000px;
+  top: 0;
+  z-index: -1;
+  width: 720px;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+/** Slightly larger photos when rasterizing for PDF export. */
+.trip-print-root--pdf-export .trip-print-cover-wrap {
+  flex: 0 0 240px;
+  width: 240px;
+}
+
+.trip-print-root--pdf-export .trip-print-place-thumb {
+  width: 48px;
+  height: 48px;
+}
+
 .trip-print-hero {
   margin-bottom: 32px;
   padding-bottom: 20px;

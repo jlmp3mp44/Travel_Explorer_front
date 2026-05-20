@@ -1,6 +1,6 @@
 <mxfile host="app.diagrams.net" agent="Cursor">
   <diagram id="auth-registration-login" name="Registration and Login">
-    <mxGraphModel dx="2175" dy="2425" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="1280" math="0" shadow="0">
+    <mxGraphModel dx="1488" dy="2063" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="1280" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -159,16 +159,16 @@
         <mxCell id="jrk9FPalm8N6_WMzqA65-127" edge="1" parent="jrk9FPalm8N6_WMzqA65-116" source="jrk9FPalm8N6_WMzqA65-118" style="endArrow=blockThin;endFill=1;endSize=8;html=1;rounded=0;strokeWidth=2;fontSize=15;" target="jrk9FPalm8N6_WMzqA65-119">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="jrk9FPalm8N6_WMzqA65-128" edge="1" parent="jrk9FPalm8N6_WMzqA65-116" source="jrk9FPalm8N6_WMzqA65-119" style="endArrow=blockThin;endFill=1;endSize=8;html=1;rounded=0;strokeWidth=2;fontStyle=1;fontSize=15;" target="jrk9FPalm8N6_WMzqA65-120" value="No">
+        <mxCell id="jrk9FPalm8N6_WMzqA65-128" edge="1" parent="jrk9FPalm8N6_WMzqA65-116" source="jrk9FPalm8N6_WMzqA65-119" style="endArrow=blockThin;endFill=1;endSize=8;html=1;rounded=0;strokeWidth=2;fontStyle=1;fontSize=15;" target="jrk9FPalm8N6_WMzqA65-120" value="Ні">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="jrk9FPalm8N6_WMzqA65-120" parent="jrk9FPalm8N6_WMzqA65-116" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=10;strokeWidth=2;fontSize=15;" value="Display validation error" vertex="1">
+        <mxCell id="jrk9FPalm8N6_WMzqA65-120" parent="jrk9FPalm8N6_WMzqA65-116" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=10;strokeWidth=2;fontSize=15;" value="Повідомлення про помилку" vertex="1">
           <mxGeometry height="50" width="170" x="540" y="52" as="geometry" />
         </mxCell>
         <mxCell id="jrk9FPalm8N6_WMzqA65-121" parent="jrk9FPalm8N6_WMzqA65-116" style="strokeWidth=2;html=1;shape=mxgraph.bpmn.event;perimeter=ellipsePerimeter;outlineConnect=0;aspect=fixed;outline=end;symbol=none;fontSize=15;" value="" vertex="1">
           <mxGeometry height="36" width="36" x="770" y="59" as="geometry" />
         </mxCell>
-        <mxCell id="jrk9FPalm8N6_WMzqA65-122" parent="jrk9FPalm8N6_WMzqA65-116" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=10;strokeWidth=2;fontSize=15;" value="Display sign-in error&#xa;(friendlyLoginError)" vertex="1">
+        <mxCell id="jrk9FPalm8N6_WMzqA65-122" parent="jrk9FPalm8N6_WMzqA65-116" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=10;strokeWidth=2;fontSize=15;" value="Повідомлення про помилку" vertex="1">
           <mxGeometry height="55" width="190" x="806" y="95" as="geometry" />
         </mxCell>
         <mxCell id="jrk9FPalm8N6_WMzqA65-123" parent="jrk9FPalm8N6_WMzqA65-116" style="strokeWidth=2;html=1;shape=mxgraph.bpmn.event;perimeter=ellipsePerimeter;outlineConnect=0;aspect=fixed;outline=end;symbol=none;fontSize=15;" value="" vertex="1">
@@ -207,16 +207,16 @@
         <mxCell id="jrk9FPalm8N6_WMzqA65-132" parent="jrk9FPalm8N6_WMzqA65-115" style="swimlane;whiteSpace=wrap;html=1;startSize=26;horizontal=0;fontStyle=1;fontSize=15;" value="Back-end" vertex="1">
           <mxGeometry height="185" width="1400" x="30" y="185" as="geometry" />
         </mxCell>
-        <mxCell id="jrk9FPalm8N6_WMzqA65-133" parent="jrk9FPalm8N6_WMzqA65-132" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=10;strokeWidth=2;fontSize=15;" value="POST /api/auth/signin&#xa;AuthenticationManager.authenticate&#xa;(username, password)" vertex="1">
+        <mxCell id="jrk9FPalm8N6_WMzqA65-133" parent="jrk9FPalm8N6_WMzqA65-132" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=10;strokeWidth=2;fontSize=15;" value="Перевірка даних" vertex="1">
           <mxGeometry height="70" width="220" x="325" y="40" as="geometry" />
         </mxCell>
         <mxCell id="jrk9FPalm8N6_WMzqA65-134" parent="jrk9FPalm8N6_WMzqA65-132" style="strokeWidth=2;html=1;shape=mxgraph.bpmn.gateway2;perimeter=rhombusPerimeter;outlineConnect=0;outline=none;symbol=none;gwType=exclusive;fontSize=15;verticalLabelPosition=bottom;verticalAlign=top;align=center;" value="Облікові дані вірні?" vertex="1">
           <mxGeometry height="50" width="50" x="630" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="jrk9FPalm8N6_WMzqA65-135" parent="jrk9FPalm8N6_WMzqA65-132" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=10;strokeWidth=2;fontSize=15;" value="Генерація JWT cookie&#xa;SecurityContextHolder +&#xa;UserInfoResponse (Set-Cookie)" vertex="1">
-          <mxGeometry height="65" width="210" x="870.0000000000002" y="100" as="geometry" />
+        <mxCell id="jrk9FPalm8N6_WMzqA65-135" parent="jrk9FPalm8N6_WMzqA65-132" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=10;strokeWidth=2;fontSize=15;" value="Генерація JWT cookie" vertex="1">
+          <mxGeometry height="65" width="210" x="810.0000000000002" y="100" as="geometry" />
         </mxCell>
-        <mxCell id="jrk9FPalm8N6_WMzqA65-136" parent="jrk9FPalm8N6_WMzqA65-132" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=10;strokeWidth=2;fontSize=15;" value="Повернути 404 Not Found&#xa;(Bad credentials)" vertex="1">
+        <mxCell id="jrk9FPalm8N6_WMzqA65-136" parent="jrk9FPalm8N6_WMzqA65-132" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=10;strokeWidth=2;fontSize=15;" value="Повернути 404&amp;nbsp;" vertex="1">
           <mxGeometry height="55" width="190" x="800" y="17" as="geometry" />
         </mxCell>
         <mxCell id="jrk9FPalm8N6_WMzqA65-137" edge="1" parent="jrk9FPalm8N6_WMzqA65-132" source="jrk9FPalm8N6_WMzqA65-133" style="endArrow=blockThin;endFill=1;endSize=8;html=1;rounded=0;strokeWidth=2;fontSize=15;" target="jrk9FPalm8N6_WMzqA65-134">
@@ -234,7 +234,7 @@
         <mxCell id="jrk9FPalm8N6_WMzqA65-140" edge="1" parent="jrk9FPalm8N6_WMzqA65-132" source="jrk9FPalm8N6_WMzqA65-134" style="endArrow=blockThin;endFill=1;endSize=8;html=1;rounded=0;strokeWidth=2;fontStyle=1;edgeStyle=orthogonalEdgeStyle;fontSize=15;" target="jrk9FPalm8N6_WMzqA65-136" value="Ні">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="jrk9FPalm8N6_WMzqA65-139" edge="1" parent="jrk9FPalm8N6_WMzqA65-115" source="jrk9FPalm8N6_WMzqA65-119" style="endArrow=blockThin;endFill=1;endSize=8;html=1;rounded=0;strokeWidth=2;fontStyle=1;fontSize=15;" target="jrk9FPalm8N6_WMzqA65-133" value="Yes">
+        <mxCell id="jrk9FPalm8N6_WMzqA65-139" edge="1" parent="jrk9FPalm8N6_WMzqA65-115" source="jrk9FPalm8N6_WMzqA65-119" style="endArrow=blockThin;endFill=1;endSize=8;html=1;rounded=0;strokeWidth=2;fontStyle=1;fontSize=15;" target="jrk9FPalm8N6_WMzqA65-133" value="Так">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="jrk9FPalm8N6_WMzqA65-141" edge="1" parent="jrk9FPalm8N6_WMzqA65-115" source="jrk9FPalm8N6_WMzqA65-136" style="endArrow=blockThin;endFill=1;endSize=8;html=1;rounded=0;strokeWidth=2;fontSize=15;" target="jrk9FPalm8N6_WMzqA65-122">

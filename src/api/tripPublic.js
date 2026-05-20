@@ -360,6 +360,7 @@ export async function fetchUserPublicTripsList(userId, options = {}) {
 }
 
 /**
+ * @deprecated Server PDF export — prefer client-side `exportTripPdfFromElement` (TripPrint layout).
  * GET PDF export. Triggers browser download using `Content-Disposition` filename when present.
  */
 export async function downloadTripPdf(tripId, { largePhotos = true } = {}) {
