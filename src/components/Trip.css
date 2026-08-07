@@ -499,7 +499,7 @@
 }
 
 .trip-step-surface select,
-.trip-step-surface input {
+.trip-step-surface input:not(.searchable-select__search) {
   background: rgba(255, 255, 255, 0.94);
   border: 1px solid rgba(255, 255, 255, 0.35);
   color: #222;
@@ -571,7 +571,7 @@ button.btn-secondary:hover {
 }
 
 .trip-step-surface select,
-.trip-step-surface input {
+.trip-step-surface input:not(.searchable-select__search) {
   width: 100%;
   padding: 10px 12px;
   margin-bottom: 10px;
@@ -581,7 +581,7 @@ button.btn-secondary:hover {
 }
 
 .trip-step-surface select:focus,
-.trip-step-surface input:focus {
+.trip-step-surface input:not(.searchable-select__search):focus {
   outline: none;
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35);
 }
@@ -633,18 +633,28 @@ button.btn-secondary:hover {
 }
 
 .trip-page .searchable-select .searchable-select__trigger {
-  background: rgba(255, 255, 255, 0.12) !important;
-  border: 1px solid rgba(255, 255, 255, 0.28) !important;
-  color: rgba(255, 255, 255, 0.96) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  border: 1px solid rgba(255, 255, 255, 0.45) !important;
+  color: #1a1a2e !important;
 }
 
 .trip-page .searchable-select .searchable-select__trigger:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.18) !important;
-  border-color: rgba(255, 255, 255, 0.4) !important;
+  background: #fff !important;
+  border-color: rgba(var(--brand-rgb), 0.5) !important;
+}
+
+.trip-page .searchable-select__value {
+  color: #1a1a2e !important;
 }
 
 .trip-page .searchable-select__value--placeholder {
-  color: rgba(255, 255, 255, 0.55);
+  color: #6b7280 !important;
+}
+
+.trip-page .searchable-select--open .searchable-select__trigger {
+  background: #fff !important;
+  border-color: var(--brand) !important;
+  box-shadow: 0 0 0 3px rgba(var(--brand-rgb), 0.28);
 }
 
 .trip-page .searchable-select__dropdown {
@@ -654,12 +664,19 @@ button.btn-secondary:hover {
 }
 
 .trip-page .searchable-select__search-wrap {
-  border-bottom-color: rgba(255, 255, 255, 0.12);
-  background: rgba(0, 0, 0, 0.15);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.96);
 }
 
 .trip-page .searchable-select__search {
-  color: #fff;
+  color: #1a1a2e !important;
+  background: transparent !important;
+  margin: 0;
+  padding: 8px 4px;
+}
+
+.trip-page .searchable-select__search::placeholder {
+  color: #6b7280;
 }
 
 .trip-page .searchable-select .searchable-select__option {
@@ -668,7 +685,7 @@ button.btn-secondary:hover {
 
 .trip-page .searchable-select .searchable-select__option:hover,
 .trip-page .searchable-select .searchable-select__option--hl {
-  background: rgba(var(--brand-rgb), 0.35) !important;
+  background: rgba(var(--brand-rgb), 0.28) !important;
   color: #fff !important;
 }
 

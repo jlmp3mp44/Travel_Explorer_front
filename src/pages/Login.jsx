@@ -8,6 +8,7 @@ import {
   friendlyNetworkError,
   parseResponseJson,
 } from "../utils/friendlyErrors";
+import { extractTokenFromAuthResponse, setAuthToken } from "../utils/authToken";
 import "../components/AuthPages.css";
 
 function Login() {
@@ -51,6 +52,9 @@ function Login() {
         setError(friendlyLoginError(response.status, data));
         return;
       }
+
+      const token = extractTokenFromAuthResponse(data);
+      if (token) setAuthToken(token);
 
       login(data);
       const redirectTo =

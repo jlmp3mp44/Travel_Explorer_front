@@ -31,6 +31,7 @@ import {
 } from "../utils/tripItinerary";
 import {
   addPendingActivityToTrip,
+  applyAutoAddFromResponse,
   isPendingActivityId,
   nextPendingActivityId,
   removeActivityFromTrip,
@@ -709,21 +710,22 @@ function TripDetails() {
     [trip?.id, addActivityPanel, closeAddActivityPanel]
   );
 
-  const handleAddSmartSuggest = useCallback(() => {
+  const handleAddSmartSuggest = useCallback(async () => {
     if (!trip?.id || !addActivityPanel?.dayId) return;
     const dayId = addActivityPanel.dayId;
-    const tempId = nextPendingActivityId();
     setAddPanelError("");
-    setPendingAdds((prev) => [...prev, { mode: "auto", dayId, tempId }]);
-    setTrip((prev) =>
-      addPendingActivityToTrip(
-        prev,
-        dayId,
-        { title: "Suggested stop (unsaved)" },
-        tempId
-      )
-    );
-    closeAddActivityPanel();
+    setBusy(`add-smart:${dayId}`);
+    try {
+      const data = await addTripActivityAuto(trip.id, dayId);
+      setTrip((prev) => applyAutoAddFromResponse(prev, dayId, data));
+      closeAddActivityPanel();
+    } catch (err) {
+      setAddPanelError(
+        err instanceof Error ? err.message : "Could not suggest a place automatically."
+      );
+    } finally {
+      setBusy(null);
+    }
   }, [trip?.id, addActivityPanel?.dayId, closeAddActivityPanel]);
 
   /** Opens the same reason modal as delete; panel opens after a choice. */

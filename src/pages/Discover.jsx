@@ -35,7 +35,7 @@ function categoryCodesKey(codes) {
 
 function Discover() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -87,7 +87,15 @@ function Discover() {
   }, []);
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      navigate("/login", { replace: true, state: { from: "/discover" } });
+    }
+  }, [authLoading, user, navigate]);
+
+  useEffect(() => {
     let cancelled = false;
+    if (authLoading || !user) return;
     setLoading(true);
     setLoadError("");
     const hasCategories = activeCategoryCodes.length > 0;
@@ -127,7 +135,7 @@ function Discover() {
     return () => {
       cancelled = true;
     };
-  }, [activeCountryId, activeCountryName, activeCategoryCodesKey]);
+  }, [authLoading, user, activeCountryId, activeCountryName, activeCategoryCodesKey]);
 
   const sortedCountries = useMemo(() => {
     return [...countries].sort((a, b) =>

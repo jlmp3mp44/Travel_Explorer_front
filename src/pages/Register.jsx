@@ -2,11 +2,13 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { apiUrl } from "../config/api";
 import AuthPasswordField from "../components/AuthPasswordField";
+import AuthErrorList from "../components/AuthErrorList";
 import {
   friendlyNetworkError,
-  friendlyRegisterError,
+  friendlyRegisterErrors,
   parseResponseJson,
 } from "../utils/friendlyErrors";
+import { validateRegisterForm } from "../utils/registerValidation";
 import "../components/AuthPages.css";
 
 function Register() {
@@ -17,17 +19,28 @@ function Register() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
+  const [errors, setErrors] = useState([]);
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const clearErrors = () => {
+    if (errors.length > 0) setErrors([]);
+  };
+
   const handleRegister = async (e) => {
     e.preventDefault();
-    setError("");
+    setErrors([]);
     setSuccess("");
 
-    if (password !== confirmPassword) {
-      setError("Those passwords don’t match. Please type the same password twice.");
+    const clientErrors = validateRegisterForm({
+      username,
+      email,
+      phoneNumber,
+      password,
+      confirmPassword,
+    });
+    if (clientErrors.length > 0) {
+      setErrors(clientErrors);
       return;
     }
 
@@ -39,8 +52,8 @@ function Register() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          username,
-          email,
+          username: username.trim(),
+          email: email.trim(),
           password,
           phoneNumber: phoneNumber.trim() || undefined,
           roles: [],
@@ -53,11 +66,11 @@ function Register() {
         setSuccess("You’re registered! Taking you to sign in…");
         setTimeout(() => navigate("/login"), 2000);
       } else {
-        setError(friendlyRegisterError(res.status, data));
+        setErrors(friendlyRegisterErrors(res.status, data));
       }
     } catch (err) {
       console.error(err);
-      setError(friendlyNetworkError(err));
+      setErrors([friendlyNetworkError(err)]);
     } finally {
       setLoading(false);
     }
@@ -77,8 +90,10 @@ function Register() {
               type="text"
               autoComplete="username"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
+              onChange={(e) => {
+                setUsername(e.target.value);
+                clearErrors();
+              }}
               minLength={3}
               maxLength={22}
             />
@@ -91,22 +106,31 @@ function Register() {
               type="email"
               autoComplete="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
+              onChange={(e) => {
+                setEmail(e.target.value);
+                clearErrors();
+              }}
             />
           </div>
 
           <div className="form-group">
-            <label htmlFor="register-phone">Phone number</label>
+            <label htmlFor="register-phone">Phone number (optional)</label>
             <input
               id="register-phone"
               type="tel"
               autoComplete="tel"
               inputMode="tel"
-              placeholder="+1 234 567 8900"
+              placeholder="+380 67 123 4567"
+              aria-describedby="register-phone-hint"
               value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
+              onChange={(e) => {
+                setPhoneNumber(e.target.value);
+                clearErrors();
+              }}
             />
+            <span id="register-phone-hint" className="auth-field-hint">
+              Optional — include country code, e.g. +380…
+            </span>
           </div>
 
           <AuthPasswordField
@@ -114,9 +138,11 @@ function Register() {
             name="password"
             label="Password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              clearErrors();
+            }}
             autoComplete="new-password"
-            required
             minLength={8}
             maxLength={126}
           />
@@ -126,18 +152,16 @@ function Register() {
             name="confirmPassword"
             label="Confirm password"
             value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
+            onChange={(e) => {
+              setConfirmPassword(e.target.value);
+              clearErrors();
+            }}
             autoComplete="new-password"
-            required
             minLength={8}
             maxLength={126}
           />
 
-          {error ? (
-            <div className="auth-alert auth-alert--error" role="alert">
-              {error}
-            </div>
-          ) : null}
+          <AuthErrorList errors={errors} />
           {success ? (
             <div className="auth-alert auth-alert--success" role="status">
               {success}

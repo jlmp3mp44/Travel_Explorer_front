@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { importLibrary, setOptions } from "@googlemaps/js-api-loader";
-import { GOOGLE_MAPS_API_KEY } from "../config/maps";
+import { GOOGLE_MAPS_API_KEY, GOOGLE_MAPS_LANGUAGE } from "../config/maps";
 import { getActivityPlacesForDisplay } from "../utils/tripItinerary";
 
 function trimStr(v) {
@@ -40,7 +40,7 @@ function collectGeocodeQueries(trip, displayDays) {
 
 function geocodeAddress(geocoder, address) {
   return new Promise((resolve) => {
-    geocoder.geocode({ address }, (results, status) => {
+    geocoder.geocode({ address, language: GOOGLE_MAPS_LANGUAGE }, (results, status) => {
       if (status === "OK" && results?.[0]?.geometry?.location) {
         resolve(results[0].geometry.location);
         return;
@@ -77,7 +77,11 @@ export default function TripRouteMap({ trip, displayDays }) {
 
     (async () => {
       try {
-        setOptions({ key: GOOGLE_MAPS_API_KEY, v: "weekly" });
+        setOptions({
+          key: GOOGLE_MAPS_API_KEY,
+          v: "weekly",
+          language: GOOGLE_MAPS_LANGUAGE,
+        });
 
         const [mapsLib, geoLib, markerLib, coreLib] = await Promise.all([
           importLibrary("maps"),

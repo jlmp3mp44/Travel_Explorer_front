@@ -109,6 +109,21 @@ export function replaceActivityPlaceInTrip(trip, activityId, place) {
   return next;
 }
 
+/** Merge newly created activities from an auto-add API response into local draft state. */
+export function applyAutoAddFromResponse(trip, dayId, data) {
+  const payload = data?.trip ?? data;
+  if (!payload || !trip) return trip;
+  const next = cloneTripShallow(trip);
+  const day = findDay(next, dayId);
+  const apiDay = extractTripDaysRawMutable(payload).find((d) => String(d.id) === String(dayId));
+  if (!day || !apiDay) return trip;
+  const localIds = new Set(coerceActs(day).map((a) => String(pickActId(a))));
+  const newActs = coerceActs(apiDay).filter((a) => !localIds.has(String(pickActId(a))));
+  if (newActs.length === 0) return trip;
+  day.activities = [...coerceActs(day), ...newActs];
+  return next;
+}
+
 export function applySmartReplacePreview(trip, activityId, data) {
   const payload = data?.trip ?? data;
   if (!payload) return trip;

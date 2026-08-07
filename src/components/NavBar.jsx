@@ -6,6 +6,22 @@ function Navbar() {
   const navigate = useNavigate();
   const { user, username, loading, logout } = useAuth();
 
+  const goDiscover = () => {
+    if (user) {
+      navigate("/discover");
+    } else {
+      navigate("/login", { state: { from: "/discover" } });
+    }
+  };
+
+  const goBestTrips = () => {
+    if (user) {
+      navigate("/best-trips");
+    } else {
+      navigate("/login", { state: { from: "/best-trips" } });
+    }
+  };
+
   const goCreateTrip = () => {
     if (user) {
       navigate("/trip");
@@ -27,10 +43,10 @@ function Navbar() {
         <button type="button" className="nav-btn nav-btn--ghost" onClick={() => navigate("/")}>
           Home
         </button>
-        <button type="button" className="nav-btn nav-btn--ghost" onClick={() => navigate("/best-trips")}>
+        <button type="button" className="nav-btn nav-btn--ghost" onClick={goBestTrips}>
           Best trips
         </button>
-        <button type="button" className="nav-btn nav-btn--ghost" onClick={() => navigate("/discover")}>
+        <button type="button" className="nav-btn nav-btn--ghost" onClick={goDiscover}>
           Discover
         </button>
       </div>

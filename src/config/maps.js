@@ -4,3 +4,6 @@
  */
 export const GOOGLE_MAPS_API_KEY =
   import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? "AIzaSyDnFydl04fZsgOvlx36TRfgjxB5GovF4yA";
+
+/** Force English map UI/labels (ignore browser locale). */
+export const GOOGLE_MAPS_LANGUAGE = "en";

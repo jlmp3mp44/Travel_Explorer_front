@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { apiUrl } from "../config/api";
+import { clearAuthToken } from "../utils/authToken";
 
 const AuthContext = createContext();
 
@@ -14,6 +15,7 @@ export const AuthProvider = ({ children }) => {
       });
       if (!res.ok) {
         setUser(null);
+        clearAuthToken();
         return null;
       }
       const data = await res.json();
@@ -70,6 +72,7 @@ export const AuthProvider = ({ children }) => {
       /* clear local session even if sign-out request fails */
     }
     setUser(null);
+    clearAuthToken();
     localStorage.removeItem("userEmail");
   }, []);
 

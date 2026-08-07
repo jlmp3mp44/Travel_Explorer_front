@@ -91,21 +91,94 @@ function mapKnownLoginPhrases(lower) {
   return null;
 }
 
-export function friendlyRegisterError(status, data) {
-  const raw = typeof data?.message === "string" ? data.message : "";
-  if (status === 404 || status === 409) {
-    if (raw && raw.length < 200 && !looksLikeTechnicalError(raw)) return raw;
-    if (status === 409) return "That username or email is already taken. Try another.";
+function pushUniqueMessage(list, msg) {
+  const t = String(msg ?? "").trim();
+  if (!t || t.length > 280 || looksLikeTechnicalError(t)) return;
+  if (!list.includes(t)) list.push(t);
+}
+
+/**
+ * Extracts every user-facing message from a typical Spring / validation error body.
+ */
+export function collectApiValidationMessages(data) {
+  const out = [];
+  if (data == null || typeof data !== "object") return out;
+
+  const violations = data.violations ?? data.details;
+  if (Array.isArray(violations)) {
+    for (const v of violations) {
+      if (typeof v === "string") pushUniqueMessage(out, v);
+      else if (v && typeof v.message === "string") pushUniqueMessage(out, v.message);
+      else if (v && typeof v.defaultMessage === "string") pushUniqueMessage(out, v.defaultMessage);
+      else if (v && v.field != null && v.defaultMessage) {
+        pushUniqueMessage(out, `${v.field}: ${v.defaultMessage}`);
+      }
+    }
+  }
+
+  const errList = data.errors ?? data.fieldErrors;
+  if (Array.isArray(errList)) {
+    for (const e of errList) {
+      if (typeof e === "string") pushUniqueMessage(out, e);
+      else if (e && typeof e.defaultMessage === "string") {
+        const field = e.field ?? e.objectName;
+        pushUniqueMessage(
+          out,
+          field ? `${field}: ${e.defaultMessage}` : e.defaultMessage
+        );
+      } else if (e && typeof e.message === "string") pushUniqueMessage(out, e.message);
+    }
+  } else if (errList && typeof errList === "object") {
+    for (const [field, val] of Object.entries(errList)) {
+      if (typeof val === "string") pushUniqueMessage(out, `${field}: ${val}`);
+      else if (Array.isArray(val)) {
+        for (const item of val) {
+          if (typeof item === "string") pushUniqueMessage(out, `${field}: ${item}`);
+          else if (item?.defaultMessage) pushUniqueMessage(out, `${field}: ${item.defaultMessage}`);
+        }
+      }
+    }
+  }
+
+  if (out.length === 0) {
+    const detail = typeof data.detail === "string" ? data.detail.trim() : "";
+    const err = typeof data.error === "string" ? data.error.trim() : "";
+    const raw = typeof data.message === "string" ? data.message.trim() : "";
+    const blob = detail || (err && err !== "Bad Request" ? err : "") || raw;
+    if (blob) {
+      for (const part of blob.split(/\n|;|\|/)) {
+        pushUniqueMessage(out, part);
+      }
+    }
+  }
+
+  return out;
+}
+
+/** All registration API errors (empty → one generic fallback). */
+export function friendlyRegisterErrors(status, data) {
+  const fromApi = collectApiValidationMessages(data);
+  if (fromApi.length > 0) return fromApi;
+
+  if (status >= 500) {
+    return ["The server is busy right now. Please try again in a moment."];
+  }
+  if (status === 409) {
+    return ["That username or email is already taken. Try another."];
   }
   if (status === 400) {
-    if (raw && raw.length < 200 && !looksLikeTechnicalError(raw)) return raw;
-    return "Please check your details and try again.";
+    return ["Please check your details and try again."];
   }
-  if (status >= 500) {
-    return "The server is busy right now. Please try again in a moment.";
+  const raw = typeof data?.message === "string" ? data.message.trim() : "";
+  if (raw && raw.length < 200 && !looksLikeTechnicalError(raw)) {
+    return [raw];
   }
-  if (raw && raw.length < 200 && !looksLikeTechnicalError(raw)) return raw;
-  return "We couldn’t complete registration. Please try again.";
+  return ["We couldn’t complete registration. Please try again."];
+}
+
+/** @deprecated Use friendlyRegisterErrors for a list; kept for single-string callers. */
+export function friendlyRegisterError(status, data) {
+  return friendlyRegisterErrors(status, data).join(" ");
 }
 
 export function friendlyTripCreateError(status, data) {

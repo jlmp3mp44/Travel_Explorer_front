@@ -27,13 +27,21 @@ function formatAvg(n) {
 
 function BestTrips() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      navigate("/login", { replace: true, state: { from: "/best-trips" } });
+    }
+  }, [authLoading, user, navigate]);
+
+  useEffect(() => {
     let cancelled = false;
+    if (authLoading || !user) return;
     fetchPublicTripsList({
       pageNumber: 0,
       pageSize: 48,
@@ -57,7 +65,7 @@ function BestTrips() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [authLoading, user]);
 
   const emptyMessage = useMemo(() => {
     if (loading || loadError) return null;

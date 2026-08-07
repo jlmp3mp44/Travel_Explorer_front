@@ -120,13 +120,15 @@
   border: none;
   padding: 8px 4px;
   font-size: 15px;
+  font-weight: 500;
   outline: none;
   background: transparent;
   margin: 0;
+  color: #1a1a2e;
 }
 
 .searchable-select__search::placeholder {
-  color: #999;
+  color: #6b7280;
 }
 
 .searchable-select__list {

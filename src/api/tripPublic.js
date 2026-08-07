@@ -1,6 +1,7 @@
 import { apiUrl } from "../config/api";
 import { parseResponseJson } from "../utils/friendlyErrors";
 import { unwrapTripPayload } from "../utils/tripItinerary";
+import { authRequestInit, catalogAuthRequiredMessage } from "./authRequest";
 
 function errorMessageFromBody(data, fallback) {
   const raw = typeof data?.message === "string" ? data.message : "";
@@ -234,12 +235,15 @@ export async function fetchMyTrips(ownerUserId) {
     pageNumber: "0",
     pageSize: "100",
   });
-  const res = await fetch(apiUrl(`/api/public/trips?${params}`), {
-    credentials: "include",
-  });
+  const res = await fetch(apiUrl(`/api/public/trips?${params}`), authRequestInit());
   const data = await parseResponseJson(res);
   if (!res.ok) {
-    throw new Error(errorMessageFromBody(data, "Could not load your trips."));
+    throw new Error(
+      errorMessageFromBody(
+        data,
+        catalogAuthRequiredMessage(res.status) ?? "Could not load your trips."
+      )
+    );
   }
   if (Array.isArray(data)) return data;
   if (Array.isArray(data?.content)) return data.content;
@@ -314,17 +318,16 @@ export function buildPublicTripsQueryString({
  */
 export async function fetchPublicTripsList(options = {}) {
   const qs = buildPublicTripsQueryString(options);
-  const res = await fetch(apiUrl(`/api/public/trips?${qs}`), {
-    credentials: "include",
-  });
+  const res = await fetch(apiUrl(`/api/public/trips?${qs}`), authRequestInit());
   const data = await parseResponseJson(res);
   if (!res.ok) {
     throw new Error(
       errorMessageFromBody(
         data,
-        res.status >= 500
-          ? "The server is busy right now. Please try again in a moment."
-          : "We couldn’t load trips. Please refresh the page."
+        catalogAuthRequiredMessage(res.status) ??
+          (res.status >= 500
+            ? "The server is busy right now. Please try again in a moment."
+            : "We couldn’t load trips. Please refresh the page.")
       )
     );
   }

@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { tripOwnerDisplayName, tripOwnerId } from "../utils/tripDisplay";
 import { useAuth } from "../context/AuthContext";
-import { apiUrl } from "../config/api";
-import { friendlyNetworkError, parseResponseJson } from "../utils/friendlyErrors";
+import { fetchPublicTripsList } from "../api/tripPublic";
+import { friendlyNetworkError } from "../utils/friendlyErrors";
 import TripListSkeleton from "../components/skeletons/TripListSkeleton";
 import TripPhotoUrl from "../components/TripPhotoUrl.jsx";
 import { tripCoverPhotoUrl } from "../utils/tripDisplay";
@@ -48,10 +48,18 @@ const HOW_STEPS = [
 
 function Home() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+
+  const goDiscover = () => {
+    if (user) {
+      navigate("/discover");
+    } else {
+      navigate("/login", { state: { from: "/discover" } });
+    }
+  };
 
   const goCreateTrip = () => {
     if (user) {
@@ -63,22 +71,18 @@ function Home() {
 
   useEffect(() => {
     let cancelled = false;
+    if (!user) {
+      setTrips([]);
+      setLoadError("");
+      setLoading(false);
+      return;
+    }
 
-    fetch(apiUrl("/api/public/trips?pageNumber=0&pageSize=6"))
-      .then(async (res) => {
-        const data = await parseResponseJson(res);
-        if (!res.ok) {
-          throw new Error(
-            res.status >= 500
-              ? "The server is busy right now. Please try again in a moment."
-              : "We couldn’t load trips. Please refresh the page."
-          );
-        }
-        return data;
-      })
-      .then((data) => {
+    setLoading(true);
+    fetchPublicTripsList({ pageNumber: 0, pageSize: 6 })
+      .then(({ content }) => {
         if (cancelled) return;
-        setTrips(data.content || []);
+        setTrips(Array.isArray(content) ? content : []);
         setLoadError("");
       })
       .catch((err) => {
@@ -94,7 +98,7 @@ function Home() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [user]);
 
   return (
     <div className="home-page">
@@ -182,7 +186,7 @@ function Home() {
                 Real examples from the community — open any card for dates, stops, and a map-ready route.
               </p>
             </div>
-            <button type="button" className="home-trips-see-all" onClick={() => navigate("/discover")}>
+            <button type="button" className="home-trips-see-all" onClick={goDiscover}>
               View all
               <span aria-hidden="true" className="home-trips-see-all__arrow">
                 →
@@ -190,7 +194,22 @@ function Home() {
             </button>
           </div>
           <div className="home-trips-scroll">
-            {loading ? (
+            {!user ? (
+              authLoading ? (
+                <TripListSkeleton count={6} variant="home" />
+              ) : (
+              <div className="home-empty-trips">
+                <p className="home-trips-status">Sign in to browse featured trips from the community.</p>
+                <button
+                  type="button"
+                  className="home-empty-trips__btn"
+                  onClick={() => navigate("/login", { state: { from: "/" } })}
+                >
+                  Sign in
+                </button>
+              </div>
+              )
+            ) : loading ? (
               <TripListSkeleton count={6} variant="home" />
             ) : loadError ? (
               <div className="home-error-panel" role="alert">
